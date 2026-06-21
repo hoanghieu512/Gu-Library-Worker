@@ -35,7 +35,6 @@ def parse_legal(lines: list[Line]) -> list[Unit]:
         m_ch = _CHUONG_RE.match(text)
         if m_ch:
             label = _chuong_label(m_ch.group(1))
-            title = m_ch.group(2).strip()
             units.append(Unit(type="heading", label=label,
                               path=list(ancestors), text=text, page=ln.page))
             ancestors = [label]

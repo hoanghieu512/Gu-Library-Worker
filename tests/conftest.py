@@ -1,5 +1,6 @@
 # tests/conftest.py
 import html as _html_module
+from pathlib import Path
 import pytest
 from docx import Document as Docx
 from pptx import Presentation
@@ -8,7 +9,7 @@ import fitz  # PyMuPDF
 
 @pytest.fixture
 def make_docx(tmp_path):
-    def _make(name: str, paragraphs: list[str]) -> "pathlib.Path":
+    def _make(name: str, paragraphs: list[str]) -> Path:
         d = Docx()
         for p in paragraphs:
             d.add_paragraph(p)
@@ -19,7 +20,7 @@ def make_docx(tmp_path):
 
 @pytest.fixture
 def make_pptx(tmp_path):
-    def _make(name: str, slide_texts: list[str]) -> "pathlib.Path":
+    def _make(name: str, slide_texts: list[str]) -> Path:
         prs = Presentation()
         blank = prs.slide_layouts[6]
         for t in slide_texts:
@@ -33,7 +34,7 @@ def make_pptx(tmp_path):
 
 @pytest.fixture
 def make_pdf(tmp_path):
-    def _make(name: str, pages: list[str]) -> "pathlib.Path":
+    def _make(name: str, pages: list[str]) -> Path:
         # Use fitz.Story + DocumentWriter so Vietnamese Unicode survives the
         # roundtrip. Page.insert_text() only supports the PDF base-14 Latin
         # character set and silently corrupts Vietnamese glyphs.

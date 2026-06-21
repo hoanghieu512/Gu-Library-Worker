@@ -16,7 +16,13 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_intake.py -q)",
       "Bash(.venv/Scripts/python -m pytest tests/test_schema.py -q)",
       "Bash(.venv/Scripts/python -m pytest tests/ -v)",
-      "Bash(git commit -q -m 'fix: reject bool for int fields in sidecar validator *)"
+      "Bash(git commit -q -m 'fix: reject bool for int fields in sidecar validator *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_legal.py -q)",
+      "Bash(.venv/Scripts/python -c \"import fitz; print\\(fitz.__version__\\); print\\(hasattr\\(fitz, 'Story'\\)\\); print\\(hasattr\\(fitz, 'DocumentWriter'\\)\\)\")",
+      "Bash(.venv/Scripts/python -m pytest -v)",
+      "Bash(.venv/Scripts/python -c \"from gu_library_worker.schema import validate_sidecar, to_sidecar, Document, Unit; d = Document\\(title='X', source='share', sourceFormat='docx', kind='legal', addedAt='2026-06-21T10:00:00+07:00', pageCount=3, units=[Unit\\(type='dieu', label='D1', path=[], text='t', page=1\\)]\\); s = to_sidecar\\(d\\); s['pageCount'] = True; print\\(validate_sidecar\\(s\\)\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(git commit -q -m 'refactor: pptx uses para.text, drop dead var, harden legal tests *)"
     ]
   }
 }

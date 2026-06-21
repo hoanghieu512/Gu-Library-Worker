@@ -10,7 +10,9 @@ def _slide_text(slide) -> str:
     for shape in slide.shapes:
         if shape.has_text_frame:
             for para in shape.text_frame.paragraphs:
-                line = "".join(run.text for run in para.runs).strip()
+                # para.text covers runs AND fields/bare <a:t> some editors emit,
+                # so we never silently drop slide text on real-world files.
+                line = para.text.strip()
                 if line:
                     parts.append(line)
     return "\n".join(parts)

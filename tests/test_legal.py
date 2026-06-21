@@ -44,3 +44,14 @@ def test_no_text_lost_total_chars():
     joined = " ".join(u.text for u in units)
     for token in ["Tiêu đề", "Một", "Hai"]:
         assert token in joined
+
+def test_second_chapter_resets_ancestors():
+    units = parse_legal(_lines([
+        "Chương I QUY ĐỊNH CHUNG",
+        "Điều 1. Phạm vi",
+        "Chương II HIỆU LỰC",
+        "Điều 2. Hiệu lực thi hành",
+    ]))
+    dieu = {u.label: u for u in units if u.type == "dieu"}
+    assert dieu["Điều 1"].path == ["Chương I"]
+    assert dieu["Điều 2"].path == ["Chương II"]  # not ["Chương I"]
