@@ -6,7 +6,17 @@
       "Bash(git checkout *)",
       "Bash(git config *)",
       "Bash(git add *)",
-      "Bash(git commit -q -m 'chore: seed repo with M7 worker plan and design docs *)"
+      "Bash(git commit -q -m 'chore: seed repo with M7 worker plan and design docs *)",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/python -m pip install -e \".[dev]\")",
+      "Bash(.venv/Scripts/python -m pytest -q)",
+      "Bash(git commit -m ' *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_config.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_prefix.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_intake.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_schema.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/ -v)",
+      "Bash(git commit -q -m 'fix: reject bool for int fields in sidecar validator *)"
     ]
   }
 }

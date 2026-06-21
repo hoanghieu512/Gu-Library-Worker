@@ -39,3 +39,11 @@ def test_validate_flags_non_positive_page():
     bad = to_sidecar(_doc())
     bad["units"][0]["page"] = 0
     assert any("page" in e for e in validate_sidecar(bad))
+
+def test_validate_rejects_bool_for_int_fields():
+    bad = to_sidecar(_doc())
+    bad["pageCount"] = True          # bool subclasses int; must be rejected
+    assert any("pageCount" in e for e in validate_sidecar(bad))
+    bad2 = to_sidecar(_doc())
+    bad2["units"][0]["page"] = True
+    assert any("page" in e for e in validate_sidecar(bad2))

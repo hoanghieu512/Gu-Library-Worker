@@ -56,7 +56,8 @@ def validate_sidecar(data: dict) -> list[str]:
     for key, typ in required.items():
         if key not in data:
             errors.append(f"missing field: {key}")
-        elif not isinstance(data[key], typ):
+        elif not isinstance(data[key], typ) or (typ is int and isinstance(data[key], bool)):
+            # bool is a subclass of int; reject it for numeric fields
             errors.append(f"field {key} wrong type: expected {typ.__name__}")
     if errors:
         return errors  # shape broken; deeper checks unsafe
@@ -79,7 +80,8 @@ def validate_sidecar(data: dict) -> list[str]:
         for key, typ in {"type": str, "label": str, "path": list, "text": str, "page": int}.items():
             if key not in u:
                 errors.append(f"{where} missing {key}")
-            elif not isinstance(u[key], typ):
+            elif not isinstance(u[key], typ) or (typ is int and isinstance(u[key], bool)):
+                # bool is a subclass of int; reject it for numeric fields
                 errors.append(f"{where} {key} wrong type")
         if u.get("type") not in VALID_UNIT_TYPES:
             errors.append(f"{where} type invalid: {u.get('type')}")
