@@ -13,6 +13,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 def test_smoke_processes_real_inbox():
+    assert KHO, "GULIB_SMOKE_KHO must be set"  # guard if skip ever fails to fire
     paths = Paths(kho_root=Path(KHO))
     before = sorted(p.name for p in paths.inbox.iterdir())
     report = scan_once(paths)  # real LibreOffice + real files

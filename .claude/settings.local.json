@@ -35,7 +35,12 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_cli.py -q)",
       "Bash(.venv/Scripts/python -m pytest tests/test_cli.py -v)",
       "Bash(.venv/Scripts/python -m pytest tests/test_scan.py::test_one_bad_file_does_not_abort_others -v)",
-      "Bash(git commit -q -m 'test: assert CLI errors when --kho is omitted *)"
+      "Bash(git commit -q -m 'test: assert CLI errors when --kho is omitted *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_acceptance_synthetic.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_smoke_real.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_acceptance_synthetic.py tests/test_smoke_real.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_smoke_real.py -v --collect-only)",
+      "Bash(git commit -q -m 'ops: indefinite scheduled-task repetition + smoke guard *)"
     ]
   }
 }

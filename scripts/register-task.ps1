@@ -12,8 +12,11 @@ $python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 $arguments = "-m gu_library_worker --kho `"$KhoRoot`" --soffice `"$Soffice`""
 
 $action = New-ScheduledTaskAction -Execute $python -Argument $arguments -WorkingDirectory $RepoRoot
+# -RepetitionDuration is required: without it, some Windows 11 builds expire the
+# repetition after ~1 day. MaxValue keeps the worker polling indefinitely.
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
-    -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
+    -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
+    -RepetitionDuration ([System.TimeSpan]::MaxValue)
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
 
