@@ -1,0 +1,77 @@
+# src/gu_library_worker/pipeline.py
+from __future__ import annotations
+from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Callable
+
+from .config import SOURCE_FORMAT
+from .prefix import parse_prefix
+from .schema import Document, to_sidecar
+from .readers.base import Extraction
+from .readers.docx_reader import read_docx
+from .readers.pptx_reader import read_pptx
+from .readers.pdf_reader import read_pdf
+from .pages import anchor_pages, page_count
+from .convert import to_pdf as default_convert
+
+VN_TZ = timezone(timedelta(hours=7))
+
+@dataclass
+class Prepared:
+    canonical_pdf: Path
+    sidecar: dict
+    subject: str
+    clean_name: str
+
+def _now_iso() -> str:
+    return datetime.now(VN_TZ).isoformat(timespec="seconds")
+
+def _read(src: Path, ext: str) -> Extraction:
+    if ext == ".docx":
+        return read_docx(src)
+    if ext == ".pptx":
+        return read_pptx(src)
+    if ext == ".pdf":
+        return read_pdf(src)
+    # legacy .doc/.ppt: native libs can't read -> handled via PDF after convert
+    raise ValueError(f"native read unsupported for {ext}")
+
+def process_one_file(
+    src: Path,
+    *,
+    tmp_workdir: Path,
+    convert_fn: Callable[..., Path] = default_convert,
+) -> Prepared:
+    tmp_workdir.mkdir(parents=True, exist_ok=True)
+    parsed = parse_prefix(src.name)
+    ext = src.suffix.lower()
+    source_format = SOURCE_FORMAT[ext]
+
+    if ext == ".pdf":
+        canonical_pdf = src
+        extraction = read_pdf(src)
+    elif ext in (".docx", ".pptx"):
+        canonical_pdf = convert_fn(src, tmp_workdir)
+        extraction = _read(src, ext)
+        if ext == ".docx":
+            anchor_pages(extraction.units, canonical_pdf)  # pptx already anchored
+    else:  # .doc / .ppt legacy -> convert then extract from the PDF
+        canonical_pdf = convert_fn(src, tmp_workdir)
+        extraction = read_pdf(canonical_pdf)
+
+    doc = Document(
+        title=Path(parsed.clean_name).stem,
+        source=parsed.source,
+        sourceFormat=source_format,
+        kind=extraction.kind,
+        units=extraction.units,
+        addedAt=_now_iso(),
+        pageCount=page_count(canonical_pdf),
+    )
+    return Prepared(
+        canonical_pdf=canonical_pdf,
+        sidecar=to_sidecar(doc),
+        subject=parsed.subject,
+        clean_name=parsed.clean_name,
+    )
