@@ -1,0 +1,18 @@
+# tests/test_pptx_reader.py
+from gu_library_worker.readers.pptx_reader import read_pptx
+
+def test_one_unit_per_slide_with_page_anchor(make_pptx):
+    path = make_pptx("deck.pptx", ["Slide một nội dung", "Slide hai nội dung", "Slide ba"])
+    ext = read_pptx(path)
+    assert ext.kind == "slide"
+    assert len(ext.units) == 3
+    assert [u.label for u in ext.units] == ["Slide 1", "Slide 2", "Slide 3"]
+    assert [u.page for u in ext.units] == [1, 2, 3]
+    assert all(u.type == "slide" and u.path == [] for u in ext.units)
+    assert "Slide một" in ext.units[0].text
+
+def test_empty_slide_keeps_unit_with_placeholder_text(make_pptx):
+    path = make_pptx("deck.pptx", [""])
+    ext = read_pptx(path)
+    assert len(ext.units) == 1
+    assert ext.units[0].text  # never empty
