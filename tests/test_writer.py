@@ -1,6 +1,8 @@
 # tests/test_writer.py
 import json
+import pathlib
 from pathlib import Path
+import pytest
 from gu_library_worker.writer import write_pair
 
 def test_writes_pair_and_deletes_original(tmp_path):
@@ -35,3 +37,25 @@ def test_original_kept_if_pdf_write_fails(tmp_path, monkeypatch):
         pass
     assert original.exists()           # original never deleted on failure
     assert not json_dst.exists()       # no half-written pair
+
+def test_pdf_rolled_back_if_json_write_fails(tmp_path, monkeypatch):
+    original = tmp_path / "_inbox" / "x.pdf"
+    original.parent.mkdir()
+    original.write_bytes(b"orig")
+    canonical_pdf = tmp_path / "tmp" / "x.pdf"
+    canonical_pdf.parent.mkdir()
+    canonical_pdf.write_bytes(b"%PDF-1.4 canonical")
+    pdf_dst = tmp_path / "Môn" / "x.pdf"
+    json_dst = tmp_path / "Môn" / "x.json"
+    pdf_dst.parent.mkdir()
+
+    def fail_write(self, *a, **kw):
+        raise OSError("disk full")
+    monkeypatch.setattr(pathlib.Path, "write_text", fail_write)
+
+    with pytest.raises(OSError):
+        write_pair(canonical_pdf, {"schemaVersion": 1}, pdf_dst, json_dst, original)
+
+    assert original.exists()       # original preserved
+    assert not pdf_dst.exists()    # partial PDF rolled back
+    assert not json_dst.exists()   # no JSON written

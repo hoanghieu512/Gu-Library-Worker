@@ -21,5 +21,6 @@ def write_pair(canonical_pdf: Path, sidecar: dict,
         pdf_dst.unlink(missing_ok=True)  # roll back partial pair
         raise
     if not (pdf_dst.exists() and json_dst.exists()):
+        pdf_dst.unlink(missing_ok=True)  # clean up orphan, leave no half-pair
         raise RuntimeError("pair not fully written; original preserved")
     original.unlink(missing_ok=True)
