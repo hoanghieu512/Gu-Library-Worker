@@ -1,4 +1,5 @@
 # tests/conftest.py
+import html as _html_module
 import pytest
 from docx import Document as Docx
 from pptx import Presentation
@@ -33,12 +34,20 @@ def make_pptx(tmp_path):
 @pytest.fixture
 def make_pdf(tmp_path):
     def _make(name: str, pages: list[str]) -> "pathlib.Path":
-        doc = fitz.open()
-        for body in pages:
-            page = doc.new_page()
-            page.insert_text((72, 72), body, fontsize=12)
+        # Use fitz.Story + DocumentWriter so Vietnamese Unicode survives the
+        # roundtrip. Page.insert_text() only supports the PDF base-14 Latin
+        # character set and silently corrupts Vietnamese glyphs.
         out = tmp_path / name
-        doc.save(out)
-        doc.close()
+        mb = fitz.paper_rect("a4")
+        where = mb + (36, 36, -36, -36)
+        writer = fitz.DocumentWriter(str(out))
+        for body in pages:
+            safe = _html_module.escape(body).replace("\n", "<br>")
+            story = fitz.Story(html=f"<p>{safe}</p>")
+            dev = writer.begin_page(mb)
+            story.place(where)
+            story.draw(dev, None)
+            writer.end_page()
+        writer.close()
         return out
     return _make
