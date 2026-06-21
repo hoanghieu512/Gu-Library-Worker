@@ -28,7 +28,14 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_writer.py -q)",
       "Bash(.venv/Scripts/python -c ' *)",
       "Bash(.venv/Scripts/python -m pytest -q -v)",
-      "Bash(git commit -q -m 'harden: writer orphan cleanup + tests for json-rollback and outdir *)"
+      "Bash(git commit -q -m 'harden: writer orphan cleanup + tests for json-rollback and outdir *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_pipeline.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_scan.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_scan.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_cli.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_cli.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_scan.py::test_one_bad_file_does_not_abort_others -v)",
+      "Bash(git commit -q -m 'test: assert CLI errors when --kho is omitted *)"
     ]
   }
 }
