@@ -53,7 +53,8 @@
       "Bash(.venv/Scripts/python -m pip install -e . -q)",
       "Bash(.venv/Scripts/python -c \"import gu_library_worker; print\\('version:', gu_library_worker.__version__\\)\")",
       "Bash(git commit -q -m 'fix\\(v0.7.1\\): robust soffice resolution + smoke skips _mon.json *)",
-      "Bash(git commit -q -m 'fix\\(v0.7.2\\): strip running headers/footers + tighten Điều regex \\(PDF only\\) *)"
+      "Bash(git commit -q -m 'fix\\(v0.7.2\\): strip running headers/footers + tighten Điều regex \\(PDF only\\) *)",
+      "Bash(git commit -q -m 'fix\\(v0.7.3\\): smoke scan excludes Syncthing .stversions/ backups *)"
     ]
   }
 }

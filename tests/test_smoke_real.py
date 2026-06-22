@@ -18,11 +18,18 @@ def validate_document_sidecars(kho_root: Path) -> int:
     A document sidecar is a `.json` paired with a same-stem `.pdf`. Folder
     metadata like `_mon.json` (color/order only, no `schemaVersion`) has no
     sibling pdf and is skipped, so it never trips a KeyError. `_inbox`/`_print`
-    are excluded. Real assertions are unchanged: schemaVersion==1, non-empty
+    and Syncthing's own dirs (`.stversions` backups, `.stfolder`, ...) are
+    excluded. Real assertions are unchanged: schemaVersion==1, non-empty
     units, each unit's text non-empty, page>=1.
     """
     checked = 0
     for sidecar in kho_root.rglob("*.json"):
+        rel_parts = sidecar.relative_to(kho_root).parts
+        # Syncthing keeps history (incl. old-schema sidecars) under `.stversions`
+        # at the share root, preserving the subtree — skip any depth. Covers
+        # other `.st*` dirs too. This is M8 versioning, not kho junk.
+        if any(part.startswith(".st") for part in rel_parts):
+            continue
         if sidecar.parent.name in ("_inbox", "_print"):
             continue
         if sidecar.name.startswith("_"):

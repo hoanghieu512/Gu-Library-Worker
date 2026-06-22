@@ -33,6 +33,26 @@ def test_ignores_inbox_and_print(tmp_path):
         (d / "stray.json").write_text(json.dumps({"nope": True}), encoding="utf-8")
     assert validate_document_sidecars(tmp_path) == 0
 
+def test_skips_stversions_backups(tmp_path):
+    # Syncthing M8 versioning keeps old-schema sidecars (no schemaVersion) under
+    # .stversions/ at the share root, mirroring the subject subtree. The scan
+    # must skip them — even though the versioned .json has a versioned .pdf
+    # sibling (so the sibling-pdf check alone would NOT save us).
+    versioned = tmp_path / ".stversions" / "Aa Dân sự"
+    versioned.mkdir(parents=True)
+    (versioned / "giao-trinh~20260621-082220.pdf").write_bytes(b"%PDF-1.4\n")
+    (versioned / "giao-trinh~20260621-082220.json").write_text(
+        json.dumps({"name": "giao-trinh", "pages": 12, "structure": []}),  # old schema
+        encoding="utf-8")
+
+    # a real, current sidecar living outside .stversions
+    mon = tmp_path / "Aa Dân sự"
+    mon.mkdir()
+    _write_sidecar(mon, "giao-trinh", [Unit("paragraph", "", [], "Nội dung", 1)])
+
+    checked = validate_document_sidecars(tmp_path)  # no KeyError on the backup
+    assert checked == 1
+
 def test_still_catches_empty_text_sidecar(tmp_path):
     mon = tmp_path / "Môn"
     mon.mkdir()

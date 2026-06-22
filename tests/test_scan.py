@@ -64,3 +64,28 @@ def test_one_bad_file_does_not_abort_others(make_pdf, tmp_path):
     assert report.processed == 1
     assert report.failed >= 1
     assert (inbox / "[Môn] broken.pdf").exists()  # failed file left in place
+
+def test_worker_never_ingests_stversions(make_pdf, tmp_path):
+    # Syncthing versioning lives at the share root (sibling of _inbox) and the
+    # worker only scans _inbox/ non-recursively, so versioned files are never
+    # re-ingested (which would resurrect deleted docs as junk). Guard both: a
+    # .stversions at kho root, and a stray .stversions dir inside _inbox.
+    paths, inbox = _kho(tmp_path)
+    root_ver = tmp_path / ".stversions" / "Môn"
+    root_ver.mkdir(parents=True)
+    (root_ver / "old~20260621-082220.pdf").write_bytes(b"%PDF-1.4 versioned")
+    inbox_ver = inbox / ".stversions"
+    inbox_ver.mkdir()
+    (inbox_ver / "deleted~20260621-082220.pdf").write_bytes(b"%PDF-1.4 versioned")
+
+    f = make_pdf("x.pdf", ["Điều 1. Nội dung"])
+    f.rename(inbox / "[Môn] x.pdf")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+
+    assert report.processed == 1            # only the real inbox file
+    assert (tmp_path / "Môn" / "x.pdf").exists()
+    # versioned copies are left exactly where they were, never processed
+    assert (root_ver / "old~20260621-082220.pdf").exists()
+    assert (inbox_ver / "deleted~20260621-082220.pdf").exists()
+    assert not (tmp_path / "Môn" / "old.pdf").exists()
+    assert not (tmp_path / "Môn" / "deleted.pdf").exists()
