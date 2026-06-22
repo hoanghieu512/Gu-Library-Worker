@@ -6,15 +6,16 @@ import sys
 from pathlib import Path
 
 from .config import Paths
-from .convert import DEFAULT_SOFFICE, to_pdf
+from .convert import to_pdf
 from .scan import scan_once
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="gu-library-worker",
                                 description="Scan kho/_inbox once and file outputs.")
     p.add_argument("--kho", required=True, help="Path to the kho root folder")
-    p.add_argument("--soffice", default=DEFAULT_SOFFICE,
-                   help="LibreOffice soffice executable path")
+    p.add_argument("--soffice", default=None,
+                   help="LibreOffice soffice path (auto-detected if omitted; "
+                        "or set the GULIB_SOFFICE env var)")
     p.add_argument("--log-level", default="INFO")
     return p
 

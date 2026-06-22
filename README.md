@@ -8,9 +8,18 @@ See `Docs/superpowers/plans/2026-06-21-gu-library-m7-worker.md` and
 
 ## Running on the mini PC
 
-One pass manually:
+One pass manually (LibreOffice is auto-detected — no `--soffice` needed):
 
-    .venv\Scripts\python -m gu_library_worker --kho "D:\path\to\kho" --soffice "C:\Program Files\LibreOffice\program\soffice.exe"
+    .venv\Scripts\python -m gu_library_worker --kho "D:\path\to\kho"
+
+LibreOffice resolution order: `GULIB_SOFFICE` env var → standard install dirs
+(`C:\Program Files\LibreOffice\program\soffice.exe` and the `(x86)` variant) →
+`PATH`. If it's installed somewhere non-standard, point the worker at it:
+
+    set GULIB_SOFFICE=D:\Apps\LibreOffice\program\soffice.exe
+
+(or pass `--soffice "<path>"`). If LibreOffice can't be found, the worker fails
+with a clear message telling you to install it or set `GULIB_SOFFICE`.
 
 Register the Scheduled Task (every 3 minutes, restarts after reboot):
 

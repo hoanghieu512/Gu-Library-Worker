@@ -4,12 +4,16 @@ param(
     [Parameter(Mandatory = $true)][string]$KhoRoot,
     [string]$RepoRoot = (Resolve-Path "$PSScriptRoot\.."),
     [int]$IntervalMinutes = 3,
-    [string]$Soffice = "C:\Program Files\LibreOffice\program\soffice.exe",
+    # Optional. Leave empty to let the worker auto-detect LibreOffice
+    # (GULIB_SOFFICE env var > standard install dirs > PATH). Only set this to
+    # pin a non-standard soffice path.
+    [string]$Soffice = "",
     [string]$TaskName = "GuLibraryWorker"
 )
 
 $python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-$arguments = "-m gu_library_worker --kho `"$KhoRoot`" --soffice `"$Soffice`""
+$arguments = "-m gu_library_worker --kho `"$KhoRoot`""
+if ($Soffice -ne "") { $arguments += " --soffice `"$Soffice`"" }
 
 $action = New-ScheduledTaskAction -Execute $python -Argument $arguments -WorkingDirectory $RepoRoot
 # -RepetitionDuration is required: without it, some Windows 11 builds expire the
@@ -24,4 +28,4 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
     -Settings $settings -Description "Gú's Library: convert + extract _inbox" -Force
 
 Write-Host "Registered '$TaskName' every $IntervalMinutes min. Test one pass now:"
-Write-Host "  $python -m gu_library_worker --kho `"$KhoRoot`" --soffice `"$Soffice`""
+Write-Host "  $python $arguments"

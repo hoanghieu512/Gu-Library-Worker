@@ -49,7 +49,10 @@
       "Bash(echo \"remote main: $\\(git ls-remote origin main)",
       "Bash(git pull *)",
       "Bash(.venv/Scripts/python -m pytest tests/test_schema.py tests/test_pdf_reader.py tests/test_docx_reader.py tests/test_pptx_reader.py -q)",
-      "Bash(git commit -q -m 'feat: emit optional bbox for PDF-origin units \\(Task 20\\) *)"
+      "Bash(git commit -q -m 'feat: emit optional bbox for PDF-origin units \\(Task 20\\) *)",
+      "Bash(.venv/Scripts/python -m pip install -e . -q)",
+      "Bash(.venv/Scripts/python -c \"import gu_library_worker; print\\('version:', gu_library_worker.__version__\\)\")",
+      "Bash(git commit -q -m 'fix\\(v0.7.1\\): robust soffice resolution + smoke skips _mon.json *)"
     ]
   }
 }
