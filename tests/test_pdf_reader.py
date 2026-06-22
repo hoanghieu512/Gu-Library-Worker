@@ -123,3 +123,46 @@ def test_reference_false_positives_out_of_range(make_pdf_blocks):
     ext = read_pdf(make_pdf_blocks("range.pdf", [{"body": body}]))
     labels = sorted(u.label for u in ext.units if u.type == "dieu")
     assert labels == ["Điều 171", "Điều 172"]             # 53/126 are references
+
+# --- v0.7.4: header/footer no longer stitched into a page-spanning Khoản ---
+
+def test_spanning_khoan_strips_interleaved_header_footer(make_pdf_blocks):
+    header = "CÔNG BÁO/Số 363 + 364/Ngày 01-3-2024"
+    pages = [
+        {"header": header,
+         "body": ("Điều 10. Điều khoản chuyển tiếp\n"
+                  "1. Khoản một có nội dung dài bắt đầu ở cuối trang"),
+         "footer": "Thời gian ký: 21.03.2024 15:22:01 +07:00\n4"},
+        {"header": header,
+         "body": "và tiếp tục liền mạch sang trang kế rồi kết thúc tại đây.",
+         "footer": "Thời gian ký: 21.03.2024 15:30:11 +07:00\n5"},
+    ]
+    ext = read_pdf(make_pdf_blocks("span2.pdf", pages))
+    khoan = [u for u in ext.units if u.type == "khoan"]
+    assert len(khoan) == 1
+    txt = khoan[0].text
+    assert "CÔNG BÁO" not in txt                       # header not injected
+    assert "Thời gian ký" not in txt                   # signature not injected
+    assert all(not re.fullmatch(r"\d+", line) for line in txt.split("\n"))  # no page num
+    # content stitched across the page break, nothing lost
+    assert "Khoản một có nội dung dài" in txt
+    assert "tiếp tục liền mạch sang trang kế" in txt
+
+def test_digit_masked_header_detected(make_pdf_blocks):
+    # Issue number differs every page; only digits vary. Exact-text matching
+    # (v0.7.2) missed this — digit-masked matching must catch it.
+    pages = [{"header": f"CÔNG BÁO/Số {360 + i} + {361 + i}/Ngày 01-3-2024",
+              "body": f"Điều {i}. Nội dung của điều."} for i in range(1, 5)]
+    ext = read_pdf(make_pdf_blocks("vary.pdf", pages))
+    assert all("CÔNG BÁO" not in u.text for u in ext.units)
+    assert {u.label for u in ext.units if u.type == "dieu"} == \
+        {"Điều 1", "Điều 2", "Điều 3", "Điều 4"}
+
+def test_digital_signature_line_stripped(make_pdf_blocks):
+    pages = [{"body": f"Điều {i}. Nội dung điều.",
+              "footer": f"Thời gian ký: 2{i}.03.2024 15:2{i}:01 +07:00"}
+             for i in range(1, 5)]
+    ext = read_pdf(make_pdf_blocks("sig.pdf", pages))
+    assert all("Thời gian ký" not in u.text for u in ext.units)
+    assert {u.label for u in ext.units if u.type == "dieu"} == \
+        {"Điều 1", "Điều 2", "Điều 3", "Điều 4"}

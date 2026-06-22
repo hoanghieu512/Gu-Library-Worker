@@ -4,97 +4,109 @@ from pathlib import Path
 import re
 import fitz  # PyMuPDF
 from gu_library_worker.schema import Unit
-from gu_library_worker.legal import has_legal_structure, parse_legal
+from gu_library_worker.legal import has_legal_structure, parse_legal, _DIEU_RE, _CHUONG_RE
 from .base import Line, Extraction
 
-# Top/bottom band (fraction of page height) where running headers/footers live.
-_MARGIN_FRACTION = 0.12
-_NUMERIC_RE = re.compile(r"\d+")
+# Top/bottom bands (fraction of page height) where running headers/footers live.
+# Bottom reaches up to 0.80 so the công báo footer cluster (page number + digital
+# signature line, y0 ~= 700-745 on A4) is covered, not just the very edge.
+_TOP_BAND = 0.12
+_BOTTOM_BAND = 0.80
+_DIGIT_RE = re.compile(r"\d+")
 
 def _rect(bbox) -> list[float]:
     return [float(c) for c in bbox]
 
-def _norm(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip()).lower()
+def _key(text: str) -> str:
+    """Normalized + digit-masked key for repetition matching.
 
-def _read_pages(path: Path) -> tuple[list[list[tuple[str, list[float], list]]], list[float]]:
-    """Read each page into text blocks: (block_text, block_bbox, [(line_text, line_bbox)])."""
-    page_blocks: list[list[tuple[str, list[float], list]]] = []
+    Digits are masked so a header/footer whose only variation is numeric
+    (`Số 363 + 364`, page number `4`, `Thời gian ký: 21.03.2024 ...`) collapses
+    to one repeating key across pages.
+    """
+    return _DIGIT_RE.sub("#", re.sub(r"\s+", " ", text.strip()).lower())
+
+def _is_structural(text: str) -> bool:
+    """A line that starts a legal unit (Điều/Chương) is never running content."""
+    return bool(_DIEU_RE.match(text) or _CHUONG_RE.match(text))
+
+def _in_margin(y0: float, height: float) -> bool:
+    return y0 < height * _TOP_BAND or y0 > height * _BOTTOM_BAND
+
+def _read_pages(path: Path) -> tuple[list[list[list[tuple[str, list[float]]]]], list[float]]:
+    """Read each page as a list of blocks; each block is a list of (line_text, line_bbox)."""
+    page_blocks: list[list[list[tuple[str, list[float]]]]] = []
     page_heights: list[float] = []
     with fitz.open(str(path)) as doc:
         for page in doc:
             page_heights.append(float(page.rect.height))
-            blocks: list[tuple[str, list[float], list]] = []
+            blocks: list[list[tuple[str, list[float]]]] = []
             for block in page.get_text("dict")["blocks"]:
                 if "lines" not in block:
                     continue  # image / non-text block
-                items = []
+                items: list[tuple[str, list[float]]] = []
                 for ln in block["lines"]:
                     ltext = "".join(span["text"] for span in ln["spans"]).strip()
                     if ltext:
                         items.append((ltext, _rect(ln["bbox"])))
                 if items:
-                    btext = "\n".join(t for t, _ in items)
-                    blocks.append((btext, _rect(block["bbox"]), items))
+                    blocks.append(items)
             page_blocks.append(blocks)
     return page_blocks, page_heights
 
-def _in_margin(bbox: list[float], height: float) -> bool:
-    return bbox[1] < height * _MARGIN_FRACTION or bbox[3] > height * (1.0 - _MARGIN_FRACTION)
+def _detect_running(page_blocks, page_heights) -> set[str]:
+    """Find running header/footer LINE keys by geometry + repetition.
 
-def _detect_running(page_blocks, page_heights) -> tuple[set[str], bool]:
-    """Find running headers/footers by geometry + repetition.
-
-    A margin block whose whitespace-normalized text repeats on >= threshold
-    pages is running content (catches the công báo header, footers, watermark
-    text — no hardcoded strings). Bare page numbers vary per page, so they are
-    detected as a class and dropped only when present on >= threshold pages.
-    Content outside the margin band is never considered, so a PDF without
-    running headers (e.g. Bộ luật Dân sự) loses nothing.
+    A non-structural line in the top/bottom margin band whose digit-masked key
+    repeats on >= half the pages is running content. Working at line level (not
+    block level) means a footer/signature/page-number/next-page-header that PyMuPDF
+    reads between the last line of page N and the first of page N+1 is dropped
+    BEFORE it can be stitched into a page-spanning Điều/Khoản. Content outside the
+    bands, and any structural (Điều/Chương) line, is never considered — so a PDF
+    without running headers (e.g. Bộ luật Dân sự) loses nothing.
     """
     num_pages = len(page_blocks)
     threshold = max(2, (num_pages + 1) // 2)  # majority of pages, min 2
-    text_pages: dict[str, set[int]] = {}
-    numeric_pages: set[int] = set()
+    key_pages: dict[str, set[int]] = {}
     for pi, (blocks, height) in enumerate(zip(page_blocks, page_heights)):
-        for btext, bbox, _ in blocks:
-            if not _in_margin(bbox, height):
-                continue
-            if _NUMERIC_RE.fullmatch(btext.strip()):
-                numeric_pages.add(pi)
-            text_pages.setdefault(_norm(btext), set()).add(pi)
-    running = {t for t, pages in text_pages.items() if len(pages) >= threshold}
-    drop_numeric = len(numeric_pages) >= threshold
-    return running, drop_numeric
+        for block in blocks:
+            for text, bbox in block:
+                if _is_structural(text) or not _in_margin(bbox[1], height):
+                    continue
+                key_pages.setdefault(_key(text), set()).add(pi)
+    return {k for k, pages in key_pages.items() if len(pages) >= threshold}
 
-def _is_running(btext: str, bbox: list[float], height: float,
-                running: set[str], drop_numeric: bool) -> bool:
-    if not _in_margin(bbox, height):
-        return False  # never drop body content
-    if _norm(btext) in running:
-        return True
-    if drop_numeric and _NUMERIC_RE.fullmatch(btext.strip()):
-        return True
-    return False
+def _is_running(text: str, bbox: list[float], height: float, running: set[str]) -> bool:
+    if _is_structural(text) or not _in_margin(bbox[1], height):
+        return False  # never drop body content or a unit boundary
+    return _key(text) in running
+
+def _union(bboxes: list[list[float]]) -> list[float]:
+    return [
+        min(b[0] for b in bboxes), min(b[1] for b in bboxes),
+        max(b[2] for b in bboxes), max(b[3] for b in bboxes),
+    ]
 
 def _pdf_lines(path: Path) -> tuple[list[Line], list[tuple[str, int, list[float]]]]:
     """Return (line-level for legal parsing, block-level for prose degrade).
 
-    Running headers/footers are stripped here, before any text reaches a unit,
-    so they neither become junk units nor get injected into article text when
-    an Điều/Khoản spans a page break.
+    Running header/footer lines are removed per page at read time, so they
+    never become junk units and never get injected into a unit whose text
+    spans a page break.
     """
     page_blocks, page_heights = _read_pages(path)
-    running, drop_numeric = _detect_running(page_blocks, page_heights)
+    running = _detect_running(page_blocks, page_heights)
     lines: list[Line] = []
     blocks_out: list[tuple[str, int, list[float]]] = []
     for pno, (blocks, height) in enumerate(zip(page_blocks, page_heights), start=1):
-        for btext, bbox, items in blocks:
-            if _is_running(btext, bbox, height, running, drop_numeric):
+        for block in blocks:
+            kept = [(t, b) for (t, b) in block if not _is_running(t, b, height, running)]
+            if not kept:
                 continue
-            blocks_out.append((btext, pno, bbox))
-            for ltext, lbbox in items:
+            for ltext, lbbox in kept:
                 lines.append(Line(text=ltext, page=pno, bbox=lbbox))
+            blocks_out.append(("\n".join(t for t, _ in kept), pno,
+                               _union([b for _, b in kept])))
     return lines, blocks_out
 
 def read_pdf(path: Path) -> Extraction:
