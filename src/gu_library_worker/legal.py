@@ -4,7 +4,11 @@ import re
 from .schema import Unit
 from .readers.base import Line
 
-_DIEU_RE = re.compile(r"^\s*Điều\s+(\d+)\b[\.\:]?\s*(.*)$")
+# An article boundary requires a dot right after the number ("Điều 201.").
+# A reference such as "Điều 201 của Luật này" has no dot and is plain text,
+# so it never starts a new `dieu` unit. (Applies to all VN legal text;
+# DOCX articles also use the dotted form, so this does not change DOCX output.)
+_DIEU_RE = re.compile(r"^\s*Điều\s+(\d+)\.\s*(.*)$")
 _CHUONG_RE = re.compile(r"^\s*(Chương\s+[IVXLCDM\d]+)\b\s*(.*)$", re.IGNORECASE)
 _KHOAN_RE = re.compile(r"^\s*(\d+)\s*[\.\)]\s+(.+)$")
 

@@ -1,4 +1,5 @@
 # tests/test_pdf_reader.py
+import re
 from gu_library_worker.readers.pdf_reader import read_pdf
 
 def test_legal_pdf_extracts_dieu(make_pdf):
@@ -50,3 +51,75 @@ def test_prose_pdf_units_carry_bbox(make_pdf):
     assert ext.kind == "prose"
     for u in ext.units:
         _valid_top_left_rect(u.bbox)
+
+# --- Defect 1: running header/footer removal (PDF only) ---
+
+def test_running_header_stripped(make_pdf_blocks):
+    header = "CÔNG BÁO/Số 367 + 368/Ngày 01-3-2024"
+    pages = [{"header": header, "body": f"Điều {i}. Nội dung của điều thứ {i}."}
+             for i in range(1, 5)]
+    ext = read_pdf(make_pdf_blocks("cb.pdf", pages))
+    joined = " ".join(u.text for u in ext.units)
+    assert "CÔNG BÁO" not in joined                       # never injected
+    assert not any(u.text.strip() == header for u in ext.units)  # no junk unit
+    assert {u.label for u in ext.units if u.type == "dieu"} == \
+        {"Điều 1", "Điều 2", "Điều 3", "Điều 4"}          # real articles survive
+
+def test_running_footer_stripped(make_pdf_blocks):
+    footer = "Trang chung của bản công báo này"
+    pages = [{"body": f"Điều {i}. Nội dung điều.", "footer": footer}
+             for i in range(1, 5)]
+    ext = read_pdf(make_pdf_blocks("ft.pdf", pages))
+    assert all("Trang chung" not in u.text for u in ext.units)
+    assert {u.label for u in ext.units if u.type == "dieu"} == \
+        {"Điều 1", "Điều 2", "Điều 3", "Điều 4"}
+
+def test_standalone_page_numbers_stripped(make_pdf_blocks):
+    pages = [{"header": str(i), "body": f"Điều {i}. Nội dung điều."}
+             for i in range(1, 6)]
+    ext = read_pdf(make_pdf_blocks("pn.pdf", pages))
+    assert not any(re.fullmatch(r"\d+", u.text.strip()) for u in ext.units)
+    assert {u.label for u in ext.units if u.type == "dieu"} == \
+        {"Điều 1", "Điều 2", "Điều 3", "Điều 4", "Điều 5"}
+
+def test_header_not_injected_into_spanning_article(make_pdf_blocks):
+    header = "CÔNG BÁO/Số 367"
+    pages = [
+        {"header": header, "body": "Điều 5. Quyền sử dụng đất của địa phương"},
+        {"header": header, "body": "được quy định chi tiết trong nghị định."},
+    ]
+    ext = read_pdf(make_pdf_blocks("span.pdf", pages))
+    dieu = [u for u in ext.units if u.type == "dieu"]
+    assert len(dieu) == 1
+    assert "CÔNG BÁO" not in dieu[0].text                 # not injected mid-text
+    assert "được quy định chi tiết" in dieu[0].text       # continuation kept
+
+def test_pdf_without_header_keeps_all_text(make_pdf_blocks):
+    pages = [
+        {"body": "Điều 1. Phạm vi điều chỉnh. Quy định nội dung điều một."},
+        {"body": "Điều 2. Giải thích từ ngữ. Quy định nội dung điều hai."},
+    ]
+    ext = read_pdf(make_pdf_blocks("plain.pdf", pages))
+    assert {u.label for u in ext.units if u.type == "dieu"} == {"Điều 1", "Điều 2"}
+    joined = " ".join(u.text for u in ext.units)
+    assert "nội dung điều một" in joined and "nội dung điều hai" in joined
+
+# --- Defect 2: reference is not an article boundary ---
+
+def test_reference_not_treated_as_article(make_pdf_blocks):
+    body = ("Điều 201. Sử dụng đất khu công nghiệp.\n"
+            "Điều 201 của Luật này được áp dụng cho trường hợp đặc biệt.")
+    ext = read_pdf(make_pdf_blocks("ref.pdf", [{"body": body}]))
+    dieu = [u for u in ext.units if u.type == "dieu"]
+    assert len(dieu) == 1                                 # not counted twice
+    assert dieu[0].label == "Điều 201"
+    joined = " ".join(u.text for u in ext.units)
+    assert "của Luật này được áp dụng" in joined          # reference text kept
+
+def test_reference_false_positives_out_of_range(make_pdf_blocks):
+    body = ("Điều 171. Đất khu kinh tế.\n"
+            "Theo quy định tại Điều 53 và Điều 126 của Luật này.\n"
+            "Điều 172. Đất sử dụng cho khu công nghệ cao.")
+    ext = read_pdf(make_pdf_blocks("range.pdf", [{"body": body}]))
+    labels = sorted(u.label for u in ext.units if u.type == "dieu")
+    assert labels == ["Điều 171", "Điều 172"]             # 53/126 are references

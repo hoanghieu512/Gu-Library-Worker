@@ -22,3 +22,11 @@ def test_pptx_units_have_no_bbox(make_pptx):
     path = make_pptx("deck.pptx", ["A", "B"])
     ext = read_pptx(path)
     assert all(u.bbox is None for u in ext.units)
+
+def test_pptx_output_unchanged_regression(make_pptx):
+    # Regression guard for v0.7.2: PDF-reader fixes must not change PPTX output.
+    ext = read_pptx(make_pptx("d.pptx", ["Nội dung A", "Nội dung B"]))
+    assert [(u.type, u.label, u.page, u.path, u.bbox) for u in ext.units] == [
+        ("slide", "Slide 1", 1, [], None),
+        ("slide", "Slide 2", 2, [], None),
+    ]
