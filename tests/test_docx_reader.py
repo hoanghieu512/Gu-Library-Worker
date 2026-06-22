@@ -29,3 +29,9 @@ def test_prose_docx_degrades_to_paragraphs(make_docx):
     assert all(u.type in {"paragraph", "heading"} for u in ext.units)
     joined = " ".join(u.text for u in ext.units)
     assert "đoạn mở đầu" in joined
+
+def test_docx_units_have_no_bbox(make_docx):
+    # Word origin has no PDF coordinates at extract time -> bbox left empty.
+    path = make_docx("law.docx", ["Điều 1. Phạm vi", "Nội dung điều một."])
+    ext = read_docx(path)
+    assert all(u.bbox is None for u in ext.units)

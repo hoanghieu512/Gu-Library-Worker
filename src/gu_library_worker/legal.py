@@ -36,7 +36,8 @@ def parse_legal(lines: list[Line]) -> list[Unit]:
         if m_ch:
             label = _chuong_label(m_ch.group(1))
             units.append(Unit(type="heading", label=label,
-                              path=list(ancestors), text=text, page=ln.page))
+                              path=list(ancestors), text=text, page=ln.page,
+                              bbox=ln.bbox))
             ancestors = [label]
             dieu_label = None
             flush_open()
@@ -46,7 +47,8 @@ def parse_legal(lines: list[Line]) -> list[Unit]:
         if m_d:
             dieu_label = f"Điều {m_d.group(1)}"
             cur_dieu = Unit(type="dieu", label=dieu_label,
-                            path=list(ancestors), text=text, page=ln.page)
+                            path=list(ancestors), text=text, page=ln.page,
+                            bbox=ln.bbox)
             units.append(cur_dieu)
             cur_khoan = None
             continue
@@ -55,7 +57,8 @@ def parse_legal(lines: list[Line]) -> list[Unit]:
         if m_k and dieu_label is not None:
             k_label = f"Khoản {m_k.group(1)}"
             cur_khoan = Unit(type="khoan", label=k_label,
-                             path=ancestors + [dieu_label], text=text, page=ln.page)
+                             path=ancestors + [dieu_label], text=text, page=ln.page,
+                             bbox=ln.bbox)
             units.append(cur_khoan)
             continue
 
@@ -66,5 +69,6 @@ def parse_legal(lines: list[Line]) -> list[Unit]:
         else:
             # text before any Điều (preamble) -> keep as paragraph, never lose it
             units.append(Unit(type="paragraph", label="",
-                              path=list(ancestors), text=text, page=ln.page))
+                              path=list(ancestors), text=text, page=ln.page,
+                              bbox=ln.bbox))
     return units

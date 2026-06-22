@@ -14,6 +14,10 @@ class Unit:
     path: list[str]
     text: str
     page: int
+    # Optional highlight rectangle [x0, y0, x1, y1] in PDF points, top-left
+    # origin, on `page`. Only PDF-origin units carry it; absence is valid
+    # (Viewer degrades to a page jump). Never set when coordinates are unknown.
+    bbox: list[float] | None = None
 
 @dataclass
 class Document:
@@ -34,17 +38,20 @@ def to_sidecar(doc: Document) -> dict:
         "sourceFormat": doc.sourceFormat,
         "pageCount": doc.pageCount,
         "kind": doc.kind,
-        "units": [
-            {
-                "type": u.type,
-                "label": u.label,
-                "path": list(u.path),
-                "text": u.text,
-                "page": u.page,
-            }
-            for u in doc.units
-        ],
+        "units": [_unit_to_dict(u) for u in doc.units],
     }
+
+def _unit_to_dict(u: Unit) -> dict:
+    d = {
+        "type": u.type,
+        "label": u.label,
+        "path": list(u.path),
+        "text": u.text,
+        "page": u.page,
+    }
+    if u.bbox is not None:  # optional: omit the key entirely when unknown
+        d["bbox"] = [float(c) for c in u.bbox]
+    return d
 
 def validate_sidecar(data: dict) -> list[str]:
     """Return a list of human-readable errors; empty means valid."""
@@ -89,4 +96,10 @@ def validate_sidecar(data: dict) -> list[str]:
             errors.append(f"{where} text must not be empty")
         if isinstance(u.get("page"), int) and u["page"] < 1:
             errors.append(f"{where} page must be >= 1")
+        if "bbox" in u:  # optional; when present must be 4 real numbers
+            bbox = u["bbox"]
+            if (not isinstance(bbox, list) or len(bbox) != 4
+                    or not all(isinstance(c, (int, float)) and not isinstance(c, bool)
+                               for c in bbox)):
+                errors.append(f"{where} bbox must be a list of 4 numbers")
     return errors

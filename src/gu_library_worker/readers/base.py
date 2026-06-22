@@ -7,6 +7,7 @@ from gu_library_worker.schema import Unit
 class Line:
     text: str
     page: int
+    bbox: list[float] | None = None  # PDF coords (top-left); None for docx/pptx
 
 @dataclass
 class Extraction:

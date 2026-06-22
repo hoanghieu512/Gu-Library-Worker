@@ -35,6 +35,8 @@ def test_word_law_yields_dieu_khoan_with_pages(make_docx, tmp_path):
     assert ("dieu", "Điều 2") in types
     assert ("khoan", "Khoản 1") in types
     assert all(u["page"] >= 1 for u in sc["units"])
+    # Word origin has no PDF coordinates -> no bbox written (still valid)
+    assert all("bbox" not in u for u in sc["units"])
     assert not (tmp_path / "_inbox" / "[Luật Công chứng] law.docx").exists()
 
 def test_pptx_one_unit_per_slide(make_pptx, tmp_path):
@@ -73,6 +75,11 @@ def test_real_pdf_origin_not_reconverted(make_pdf, tmp_path):
     assert sc["sourceFormat"] == "pdf"
     joined = " ".join(u["text"] for u in sc["units"])
     assert "trang một" in joined and "trang hai" in joined  # no text lost
+    # PDF origin -> every unit carries a valid top-left bbox
+    for u in sc["units"]:
+        assert len(u["bbox"]) == 4
+        x0, y0, x1, y1 = u["bbox"]
+        assert x0 < x1 and y0 < y1
 
 def test_tmp_file_left_alone(tmp_path):
     paths = Paths(kho_root=tmp_path)

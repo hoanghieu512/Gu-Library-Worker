@@ -16,3 +16,9 @@ def test_empty_slide_keeps_unit_with_placeholder_text(make_pptx):
     ext = read_pptx(path)
     assert len(ext.units) == 1
     assert ext.units[0].text  # never empty
+
+def test_pptx_units_have_no_bbox(make_pptx):
+    # Slide origin has no PDF coordinates at extract time -> bbox left empty.
+    path = make_pptx("deck.pptx", ["A", "B"])
+    ext = read_pptx(path)
+    assert all(u.bbox is None for u in ext.units)

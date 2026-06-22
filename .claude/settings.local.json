@@ -40,7 +40,16 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_smoke_real.py -v)",
       "Bash(.venv/Scripts/python -m pytest tests/test_acceptance_synthetic.py tests/test_smoke_real.py -v)",
       "Bash(.venv/Scripts/python -m pytest tests/test_smoke_real.py -v --collect-only)",
-      "Bash(git commit -q -m 'ops: indefinite scheduled-task repetition + smoke guard *)"
+      "Bash(git commit -q -m 'ops: indefinite scheduled-task repetition + smoke guard *)",
+      "Bash(git remote *)",
+      "Bash(gh auth *)",
+      "Bash(git ls-remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(echo \"remote main: $\\(git ls-remote origin main)",
+      "Bash(git pull *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_schema.py tests/test_pdf_reader.py tests/test_docx_reader.py tests/test_pptx_reader.py -q)",
+      "Bash(git commit -q -m 'feat: emit optional bbox for PDF-origin units \\(Task 20\\) *)"
     ]
   }
 }
