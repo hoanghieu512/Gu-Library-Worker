@@ -65,6 +65,54 @@ def test_one_bad_file_does_not_abort_others(make_pdf, tmp_path):
     assert report.failed >= 1
     assert (inbox / "[Môn] broken.pdf").exists()  # failed file left in place
 
+def test_resent_duplicate_against_existing_folder_pair(make_pdf, tmp_path):
+    # The real mini-PC case: a file processed in a PREVIOUS run already sits in
+    # the subject folder; the same file is shared again and lands in _inbox/.
+    # The new pair must be suffixed (1) against the on-disk file (not just the
+    # same-scan set), the old pair must NOT be overwritten, and the inbox cleared.
+    paths, inbox = _kho(tmp_path)
+    subject = tmp_path / "Luật Đất đai"
+    subject.mkdir()
+    (subject / "31-2024-qh15_1.pdf").write_bytes(b"%PDF-1.4 old")
+    (subject / "31-2024-qh15_1.json").write_text('{"schemaVersion": 1}', encoding="utf-8")
+    old_bytes = (subject / "31-2024-qh15_1.pdf").read_bytes()
+
+    f = make_pdf("re.pdf", ["Điều 1. Nội dung gửi lại"])
+    f.rename(inbox / "[Luật Đất đai] 31-2024-qh15_1.pdf")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+
+    assert report.processed == 1
+    assert (subject / "31-2024-qh15_1 (1).pdf").exists()
+    assert (subject / "31-2024-qh15_1 (1).json").exists()           # pair same suffix
+    assert (subject / "31-2024-qh15_1.pdf").read_bytes() == old_bytes  # not overwritten
+    assert not (inbox / "[Luật Đất đai] 31-2024-qh15_1.pdf").exists()  # inbox cleared
+
+def test_resent_duplicate_increments_to_next_free(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    subject = tmp_path / "Môn"
+    subject.mkdir()
+    for stem in ("X", "X (1)"):
+        (subject / f"{stem}.pdf").write_bytes(b"%PDF-1.4")
+        (subject / f"{stem}.json").write_text('{"schemaVersion": 1}', encoding="utf-8")
+    f = make_pdf("s.pdf", ["Điều 1. Nội dung"])
+    f.rename(inbox / "[Môn] X.pdf")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert (subject / "X (2).pdf").exists()
+    assert (subject / "X (2).json").exists()
+
+def test_same_scan_two_inbox_files_same_target(make_pdf, tmp_path):
+    # Keep the old-good case: two files cleaning to the same target in ONE pass.
+    paths, inbox = _kho(tmp_path)
+    a = make_pdf("a.pdf", ["Điều 1. Một"])
+    a.rename(inbox / "[Môn] doc.pdf")
+    b = make_pdf("b.pdf", ["Điều 1. Hai"])
+    b.rename(inbox / "[Môn]doc.pdf")     # no space -> same clean name "doc.pdf"
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    subject = tmp_path / "Môn"
+    assert report.processed == 2
+    assert sorted(p.name for p in subject.glob("*.pdf")) == ["doc (1).pdf", "doc.pdf"]
+    assert sorted(p.name for p in subject.glob("*.json")) == ["doc (1).json", "doc.json"]
+
 def test_worker_never_ingests_stversions(make_pdf, tmp_path):
     # Syncthing versioning lives at the share root (sibling of _inbox) and the
     # worker only scans _inbox/ non-recursively, so versioned files are never

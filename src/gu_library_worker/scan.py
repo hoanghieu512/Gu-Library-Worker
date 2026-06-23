@@ -36,6 +36,7 @@ def scan_once(paths: Paths, *, convert_fn: Callable[..., Path] = default_convert
         if not entry.is_file():
             continue
         if not is_candidate_name(entry.name):
+            log.info("skipped (unsupported/temp name): %s", entry.name)
             report.skipped += 1
             continue
         if not wait_until_stable(entry, **stable_kwargs):
