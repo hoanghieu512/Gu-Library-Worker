@@ -58,7 +58,8 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_pdf_reader.py tests/test_legal.py tests/test_docx_reader.py tests/test_pptx_reader.py tests/test_acceptance_synthetic.py -q)",
       "Bash(.venv/Scripts/python -m pytest tests/test_pdf_reader.py -q)",
       "Bash(git commit -q -m 'fix\\(v0.7.4\\): line-level digit-masked running-header strip \\(PDF\\) *)",
-      "Bash(git commit -q -m 'test\\(v0.7.5\\): lock re-send dedup against existing folder pair + skip log *)"
+      "Bash(git commit -q -m 'test\\(v0.7.5\\): lock re-send dedup against existing folder pair + skip log *)",
+      "Bash(git commit -q -m 'fix\\(v0.7.6\\): strip page-1 công báo cover metadata \\(signature + masthead\\) *)"
     ]
   }
 }

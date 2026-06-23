@@ -14,6 +14,38 @@ _TOP_BAND = 0.12
 _BOTTOM_BAND = 0.80
 _DIGIT_RE = re.compile(r"\d+")
 
+# --- Công báo điện tử cover-page metadata (appears once on page 1, so the
+# repetition mechanism can't catch it). Two clusters, same source: ---
+# 1) the digital-signature appliance stamp. These markers never occur in legal
+#    article text, so they are dropped ANYWHERE (in file _3 the stamp lands in
+#    the MIDDLE of điểm a), splitting a real clause — removing the lines lets the
+#    clause stitch back together).
+_SIGNATURE_PREFIXES = ("thời gian ký:", "cơ quan:", "ký bởi:", "người ký:")
+_EMAIL_RE = re.compile(r"^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$")
+# 2) the công báo masthead / column header reprinted on the cover. Dropped ONLY
+#    on page 1, BEFORE the first legal unit, so it can never touch article bodies
+#    or a law's own title / "Căn cứ ..." preamble (which are kept).
+_COVER_SUBSTRINGS = ("văn bản quy phạm pháp luật", "công báo", "chủ tịch nước")
+_COVER_LINE_RES = (
+    re.compile(r"^quốc hội$"),                                   # bare issuing body
+    re.compile(r"[-–]\s*quốc hội$"),                             # "... - QUỐC HỘI" column
+    re.compile(r"^(luật|bộ luật|nghị định|nghị quyết|thông tư|quyết định)\s+số\s*:"),
+    re.compile(r"^số\s*:\s*\d"),
+)
+
+def _cf(text: str) -> str:
+    return text.strip().casefold()
+
+def _is_signature(text: str) -> bool:
+    t = _cf(text)
+    return any(t.startswith(p) for p in _SIGNATURE_PREFIXES) or bool(_EMAIL_RE.match(text.strip()))
+
+def _is_cover_meta(text: str) -> bool:
+    t = _cf(text)
+    if any(s in t for s in _COVER_SUBSTRINGS):
+        return True
+    return any(rx.search(t) for rx in _COVER_LINE_RES)
+
 def _rect(bbox) -> list[float]:
     return [float(c) for c in bbox]
 
@@ -98,9 +130,20 @@ def _pdf_lines(path: Path) -> tuple[list[Line], list[tuple[str, int, list[float]
     running = _detect_running(page_blocks, page_heights)
     lines: list[Line] = []
     blocks_out: list[tuple[str, int, list[float]]] = []
+    seen_unit = False  # tracked in reading order: gates cover-meta to the cover
     for pno, (blocks, height) in enumerate(zip(page_blocks, page_heights), start=1):
         for block in blocks:
-            kept = [(t, b) for (t, b) in block if not _is_running(t, b, height, running)]
+            kept: list[tuple[str, list[float]]] = []
+            for text, bbox in block:
+                if _is_structural(text):
+                    seen_unit = True          # a unit boundary is never dropped
+                elif _is_signature(text):
+                    continue                  # signature appliance stamp, any page
+                elif pno == 1 and not seen_unit and _is_cover_meta(text):
+                    continue                  # công báo cover masthead, page 1 only
+                elif _is_running(text, bbox, height, running):
+                    continue                  # repeated header/footer
+                kept.append((text, bbox))
             if not kept:
                 continue
             for ltext, lbbox in kept:

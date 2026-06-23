@@ -166,3 +166,66 @@ def test_digital_signature_line_stripped(make_pdf_blocks):
     assert all("Thời gian ký" not in u.text for u in ext.units)
     assert {u.label for u in ext.units if u.type == "dieu"} == \
         {"Điều 1", "Điều 2", "Điều 3", "Điều 4"}
+
+# --- v0.7.6: page-1 cover metadata (appears once, repetition can't catch it) ---
+
+def test_cover_page_signature_and_masthead_stripped(make_pdf_blocks):
+    page1 = "\n".join([
+        "thongtinchinhphu@chinhphu.vn",
+        "Cơ quan: VĂN PHÒNG CHÍNH PHỦ",
+        "Thời gian ký: 21.03.2024 15:22:01 +07:00",
+        "VĂN BẢN QUY PHẠM PHÁP LUẬT",
+        "CHỦ TỊCH NƯỚC - QUỐC HỘI",
+        "QUỐC HỘI",
+        "Luật số: 31/2024/QH15",
+        "LUẬT ĐẤT ĐAI",                                       # title: kept
+        "Căn cứ Hiến pháp nước Cộng hòa xã hội chủ nghĩa Việt Nam;",  # preamble: kept
+        "Điều 1. Phạm vi điều chỉnh",
+        "1. Luật này quy định về đất đai.",
+    ])
+    ext = read_pdf(make_pdf_blocks("dat1.pdf", [{"body": page1}]))
+    joined = " ".join(u.text for u in ext.units)
+    for junk in ("Thời gian ký", "thongtinchinhphu@chinhphu.vn", "Cơ quan:",
+                 "VĂN BẢN QUY PHẠM PHÁP LUẬT", "CHỦ TỊCH NƯỚC", "QUỐC HỘI",
+                 "Luật số:"):
+        assert junk not in joined, f"cover junk leaked: {junk}"
+    # legitimate front matter and articles preserved
+    assert "LUẬT ĐẤT ĐAI" in joined
+    assert "Căn cứ Hiến pháp" in joined
+    assert [u.label for u in ext.units if u.type == "dieu"] == ["Điều 1"]
+    khoan = [u for u in ext.units if u.type == "khoan"]
+    assert khoan and "Luật này quy định về đất đai" in khoan[0].text
+
+def test_signature_splitting_a_clause_is_rejoined(make_pdf_blocks):
+    # file _3 case: the stamp lands in the MIDDLE of điểm a), cutting the clause
+    page1 = "\n".join([
+        "Điều 5. Quyền của người sử dụng đất",
+        "1. Người sử dụng đất có các quyền sau:",
+        "a) được cấp giấy chứng nhận quyền sử dụng",
+        "Thời gian ký: 21.03.2024 15:22:01 +07:00",
+        "đất và tài sản gắn liền với đất;",
+    ])
+    ext = read_pdf(make_pdf_blocks("dat3.pdf", [{"body": page1}]))
+    khoan = [u for u in ext.units if u.type == "khoan"]
+    assert len(khoan) == 1
+    flat = khoan[0].text.replace("\n", " ")
+    assert "Thời gian ký" not in flat
+    assert "được cấp giấy chứng nhận quyền sử dụng đất và tài sản gắn liền" in flat
+
+def test_plain_law_cover_not_stripped(make_pdf_blocks):
+    # A law with a normal title + preamble but NO công báo masthead/signature
+    # (e.g. Bộ luật Dân sự) must keep everything.
+    page1 = "\n".join([
+        "BỘ LUẬT DÂN SỰ",
+        "Căn cứ Hiến pháp nước Cộng hòa xã hội chủ nghĩa Việt Nam;",
+        "Quốc hội ban hành Bộ luật Dân sự.",
+        "Điều 1. Phạm vi điều chỉnh",
+        "Bộ luật này quy định địa vị pháp lý của cá nhân.",
+    ])
+    ext = read_pdf(make_pdf_blocks("ds.pdf", [{"body": page1}]))
+    joined = " ".join(u.text for u in ext.units)
+    assert "BỘ LUẬT DÂN SỰ" in joined
+    assert "Căn cứ Hiến pháp" in joined
+    assert "Quốc hội ban hành Bộ luật Dân sự" in joined          # not mistaken for masthead
+    assert "địa vị pháp lý của cá nhân" in joined
+    assert [u.label for u in ext.units if u.type == "dieu"] == ["Điều 1"]
