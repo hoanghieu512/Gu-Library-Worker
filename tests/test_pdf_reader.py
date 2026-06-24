@@ -212,6 +212,35 @@ def test_signature_splitting_a_clause_is_rejoined(make_pdf_blocks):
     assert "Thời gian ký" not in flat
     assert "được cấp giấy chứng nhận quyền sử dụng đất và tài sản gắn liền" in flat
 
+def test_cover_email_line_stripped_and_clause_rejoined(make_pdf_blocks):
+    # v0.7.7: the 'Email: <addr>' line of the page-1 signature block (file _3
+    # case) lands between Khoản 1 and điểm a) — must be dropped and the clause
+    # stitched continuous.
+    page1 = "\n".join([
+        "Điều 5. Giao đất, cho thuê đất",
+        "1. Việc giao đất được quy định như sau:",
+        "Email: thongtinchinhphu@chinhphu.vn",
+        "a) Thời hạn giao đất không quá năm mươi năm;",
+    ])
+    ext = read_pdf(make_pdf_blocks("dat3email.pdf", [{"body": page1}]))
+    khoan = [u for u in ext.units if u.type == "khoan"]
+    assert len(khoan) == 1
+    flat = khoan[0].text.replace("\n", " ")
+    assert "thongtinchinhphu" not in flat
+    assert "Email:" not in flat
+    assert "được quy định như sau: a) Thời hạn giao đất" in flat
+
+def test_email_inside_real_sentence_is_kept(make_pdf_blocks):
+    # An email embedded in a real sentence (not the signature block) is content.
+    page1 = "\n".join([
+        "Điều 1. Phạm vi điều chỉnh",
+        "1. Mọi liên hệ gửi về abc@toaan.gov.vn trước ngày làm việc.",
+    ])
+    ext = read_pdf(make_pdf_blocks("ds_email.pdf", [{"body": page1}]))
+    joined = " ".join(u.text for u in ext.units)
+    assert "abc@toaan.gov.vn" in joined
+    assert [u.label for u in ext.units if u.type == "dieu"] == ["Điều 1"]
+
 def test_plain_law_cover_not_stripped(make_pdf_blocks):
     # A law with a normal title + preamble but NO công báo masthead/signature
     # (e.g. Bộ luật Dân sự) must keep everything.

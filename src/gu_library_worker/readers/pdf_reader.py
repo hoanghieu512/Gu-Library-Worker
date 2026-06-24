@@ -21,7 +21,9 @@ _DIGIT_RE = re.compile(r"\d+")
 #    the MIDDLE of điểm a), splitting a real clause — removing the lines lets the
 #    clause stitch back together).
 _SIGNATURE_PREFIXES = ("thời gian ký:", "cơ quan:", "ký bởi:", "người ký:")
-_EMAIL_RE = re.compile(r"^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$")
+_EMAIL_RE = re.compile(r"^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$")            # whole line is an email
+_EMAIL_LINE_RE = re.compile(                                        # "Email: <addr>" contact line
+    r"^e-?mail\s*:\s*[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.IGNORECASE)
 # 2) the công báo masthead / column header reprinted on the cover. Dropped ONLY
 #    on page 1, BEFORE the first legal unit, so it can never touch article bodies
 #    or a law's own title / "Căn cứ ..." preamble (which are kept).
@@ -37,8 +39,13 @@ def _cf(text: str) -> str:
     return text.strip().casefold()
 
 def _is_signature(text: str) -> bool:
+    stripped = text.strip()
     t = _cf(text)
-    return any(t.startswith(p) for p in _SIGNATURE_PREFIXES) or bool(_EMAIL_RE.match(text.strip()))
+    if any(t.startswith(p) for p in _SIGNATURE_PREFIXES):
+        return True
+    # a line that IS an email, or a "Email: <addr>" contact line; an email
+    # embedded mid-sentence (real content) matches neither and is kept.
+    return bool(_EMAIL_RE.match(stripped) or _EMAIL_LINE_RE.match(stripped))
 
 def _is_cover_meta(text: str) -> bool:
     t = _cf(text)
