@@ -28,3 +28,18 @@ Register the Scheduled Task (every 3 minutes, restarts after reboot):
 The worker is stateless: each run scans `_inbox/` once and exits. Files it can't
 handle (wrong extension, still being written, broken) are left in place on
 purpose — the app shows ⏳ as the signal to clean up by hand.
+
+## Diagnostics: `_worker.log`
+
+Each pass appends to `<kho>/_worker.log` (in addition to stdout) — the run time,
+the `ScanReport` (processed/skipped/failed), and the reason each file was skipped
+or failed (with tracebacks). This is how you debug a stuck file when the Scheduled
+Task runs in the background and swallows stdout. The file rotates (≈1 MB × 3
+backups) so it can't grow unbounded, and its leading underscore keeps the app
+from treating it as data.
+
+It lives at the kho root, so Syncthing will replicate it. To keep it local to the
+mini PC, add a `.stignore` at the kho root containing:
+
+    _worker.log
+    _worker.log.*

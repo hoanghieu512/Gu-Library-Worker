@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .config import Paths
 from .convert import to_pdf
+from .logsetup import attach_log_file
 from .scan import scan_once
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -26,12 +27,13 @@ def run(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
     )
     paths = Paths(kho_root=Path(args.kho))
+    log = logging.getLogger("gu_library_worker")
+    attach_log_file(paths.kho_root)  # persistent <kho>/_worker.log for the Scheduled Task
+    log.info("scan starting: kho=%s", paths.kho_root)
     convert_fn = lambda src, outdir, **kw: to_pdf(src, outdir, soffice=args.soffice)
     report = scan_once(paths, convert_fn=convert_fn)
-    logging.getLogger("gu_library_worker").info(
-        "done: processed=%d skipped=%d failed=%d",
-        report.processed, report.skipped, report.failed,
-    )
+    log.info("done: processed=%d skipped=%d failed=%d",
+             report.processed, report.skipped, report.failed)
     return 0
 
 if __name__ == "__main__":
