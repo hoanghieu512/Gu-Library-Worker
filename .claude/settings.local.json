@@ -63,7 +63,8 @@
       "Bash(git commit -q -m 'fix\\(v0.7.7\\): catch '\\\\''Email:'\\\\'' line of page-1 signature block *)",
       "Bash(.venv/Scripts/python -m pytest tests/test_logsetup.py -q)",
       "Bash(git commit -q -m 'feat\\(v0.7.8\\): persistent rotating _worker.log for observability *)",
-      "Bash(git commit -q -m 'fix\\(v0.7.9\\): register-task.ps1 indefinite repetition + verify success *)"
+      "Bash(git commit -q -m 'fix\\(v0.7.9\\): register-task.ps1 indefinite repetition + verify success *)",
+      "Bash(git commit -q -m 'fix\\(v0.7.10\\): run Scheduled Task via pythonw.exe \\(no console flash\\) *)"
     ]
   }
 }

@@ -13,11 +13,26 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+# Run via pythonw.exe (no-console Python) so the task never flashes a terminal
+# window each pass. Output goes nowhere, but that's fine: the worker logs to
+# <kho>/_worker.log (see logsetup). Fall back to python.exe with a clear warning
+# if pythonw is missing (older/partial venv) so the task still works.
+$pythonw = Join-Path $RepoRoot ".venv\Scripts\pythonw.exe"
+$python  = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+if (Test-Path $pythonw) {
+    $exe = $pythonw
+} elseif (Test-Path $python) {
+    Write-Warning "pythonw.exe not found in venv; using python.exe (a console window will flash each run). Recreate the venv to get pythonw.exe."
+    $exe = $python
+} else {
+    Write-Error "No Python found in venv: expected '$pythonw' or '$python'. Create it first: python -m venv .venv"
+    exit 1
+}
+
 $arguments = "-m gu_library_worker --kho `"$KhoRoot`""
 if ($Soffice -ne "") { $arguments += " --soffice `"$Soffice`"" }
 
-$action = New-ScheduledTaskAction -Execute $python -Argument $arguments -WorkingDirectory $RepoRoot
+$action = New-ScheduledTaskAction -Execute $exe -Argument $arguments -WorkingDirectory $RepoRoot
 
 # Repeat every N minutes, indefinitely. Do NOT set -RepetitionDuration to a huge
 # value: [TimeSpan]::MaxValue serializes to P99999999DT23H59M59S, which Task
@@ -46,7 +61,8 @@ if (-not $task) {
     exit 1
 }
 
-Write-Host "Registered '$TaskName': runs every $IntervalMinutes min (indefinite)."
-Write-Host "Verify : Get-ScheduledTask -TaskName $TaskName"
-Write-Host "One pass: $python $arguments"
+Write-Host "Registered '$TaskName': runs every $IntervalMinutes min (indefinite), no console window."
+Write-Host "Verify  : Get-ScheduledTask -TaskName $TaskName"
+Write-Host "Logs    : $KhoRoot\_worker.log"
+Write-Host "One pass (with console output): $python $arguments"
 exit 0
