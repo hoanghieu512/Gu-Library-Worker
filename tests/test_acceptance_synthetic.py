@@ -82,9 +82,12 @@ def test_real_pdf_origin_not_reconverted(make_pdf, tmp_path):
         assert x0 < x1 and y0 < y1
 
 def test_tmp_file_left_alone(tmp_path):
+    # A non-document .tmp (no doc extension before .tmp) is not the SAF artifact
+    # and is left untouched. (Document-extension .tmp like x.pdf.tmp is instead
+    # normalized — see tests/test_scan.py::test_app_tmp_pdf_normalized_and_filed.)
     paths = Paths(kho_root=tmp_path)
     (tmp_path / "_inbox").mkdir()
-    (tmp_path / "_inbox" / "[Môn] x.pdf.tmp").write_bytes(b"half written")
+    (tmp_path / "_inbox" / "[Môn] x.txt.tmp").write_bytes(b"half written")
     report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
-    assert (tmp_path / "_inbox" / "[Môn] x.pdf.tmp").exists()
+    assert (tmp_path / "_inbox" / "[Môn] x.txt.tmp").exists()
     assert report.processed == 0

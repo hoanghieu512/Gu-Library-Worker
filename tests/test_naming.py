@@ -1,5 +1,5 @@
 # tests/test_naming.py
-from gu_library_worker.naming import resolve_target_stems, Reservations
+from gu_library_worker.naming import resolve_target_stems, dedup_name, Reservations
 
 def test_basic_pair_names(tmp_path):
     subject = tmp_path / "Môn"
@@ -35,3 +35,23 @@ def test_suffix_increments(tmp_path):
     res = Reservations()
     pdf, _ = resolve_target_stems(subject, "x.pdf", res)
     assert pdf.name == "x (2).pdf"
+
+def test_dedup_name_free(tmp_path):
+    claimed = set()
+    assert dedup_name(tmp_path, "[Môn] a.pdf", claimed) == "[Môn] a.pdf"
+    assert "[Môn] a.pdf" in claimed
+
+def test_dedup_name_suffix_before_extension_on_disk(tmp_path):
+    (tmp_path / "[Môn] a.pdf").write_bytes(b"x")
+    claimed = set()
+    assert dedup_name(tmp_path, "[Môn] a.pdf", claimed) == "[Môn] a (1).pdf"
+
+def test_dedup_name_claimed_this_pass(tmp_path):
+    claimed = set()
+    dedup_name(tmp_path, "a.docx", claimed)               # claims "a.docx"
+    assert dedup_name(tmp_path, "a.docx", claimed) == "a (1).docx"
+
+def test_dedup_name_increments(tmp_path):
+    (tmp_path / "a.pdf").write_bytes(b"x")
+    (tmp_path / "a (1).pdf").write_bytes(b"x")
+    assert dedup_name(tmp_path, "a.pdf", set()) == "a (2).pdf"

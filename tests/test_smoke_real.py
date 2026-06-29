@@ -55,9 +55,11 @@ def test_smoke_processes_real_inbox():
     checked = validate_document_sidecars(paths.kho_root)
     assert checked > 0, "no document sidecars found to validate"
 
-    # .tmp decoy stays untouched
+    # A NON-document .tmp decoy stays untouched. (A document-extension .tmp such
+    # as 'x.pdf.tmp' is the Samsung/SAF artifact and is now normalized+processed,
+    # so the decoy must be e.g. 'decoy.tmp' or '.syncthing.*.tmp' to remain.)
     remaining = sorted(p.name for p in paths.inbox.iterdir())
     assert any(n.endswith(".tmp") for n in remaining), \
-        "expected the .tmp decoy to be left behind"
+        "expected a non-document .tmp decoy to be left behind"
     print("inbox before:", before)
     print("inbox after :", remaining)

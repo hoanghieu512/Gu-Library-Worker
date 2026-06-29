@@ -28,12 +28,82 @@ def test_docx_filed_into_subject_and_original_removed(make_docx, tmp_path):
     assert not (inbox / "[Luật Công chứng] law.docx").exists()
     assert report.processed == 1
 
-def test_tmp_file_is_skipped_and_left(tmp_path):
+def test_nondoc_tmp_is_skipped_and_left(tmp_path):
+    # A .tmp NOT preceded by a document extension is not the SAF artifact -> left.
     paths, inbox = _kho(tmp_path)
-    (inbox / "junk.pdf.tmp").write_bytes(b"x")
+    (inbox / "random.tmp").write_bytes(b"x")
     report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
-    assert (inbox / "junk.pdf.tmp").exists()  # left for manual cleanup
+    assert (inbox / "random.tmp").exists()  # left for manual cleanup
     assert report.processed == 0
+
+def test_app_tmp_pdf_normalized_and_filed(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    f = make_pdf("src.pdf", ["Điều 1. Nội dung"])
+    f.rename(inbox / "[Tố tụng Hình sự] a.pdf.tmp")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1
+    subject = tmp_path / "Tố tụng Hình sự"
+    assert (subject / "a.pdf").exists() and (subject / "a.json").exists()
+    assert not any(p.name.endswith(".tmp") for p in inbox.iterdir())  # tmp consumed
+    assert not (inbox / "[Tố tụng Hình sự] a.pdf").exists()           # not left in inbox
+
+def test_app_tmp_docx_pptx_ppt_normalized(make_docx, make_pptx, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_docx("d.docx", ["Điều 1. Phạm vi", "Nội dung."]).rename(
+        inbox / "[Chưa phân loại] b.docx.tmp")
+    make_pptx("p.pptx", ["Slide A"]).rename(
+        inbox / "[Chưa phân loại] d.pptx.tmp")
+    # legacy .ppt: native libs can't read OLE -> converted then read from PDF
+    (inbox / "[Chưa phân loại] c.ppt.tmp").write_bytes(b"legacy ole bytes")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 3
+    area = tmp_path / "Chưa phân loại"
+    for stem in ("b", "c", "d"):
+        assert (area / f"{stem}.pdf").exists() and (area / f"{stem}.json").exists()
+    assert not any(p.name.endswith(".tmp") for p in inbox.iterdir())
+
+def test_syncthing_and_nondoc_tmp_left_alone(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    (inbox / ".syncthing.x.pdf.tmp").write_bytes(b"x")
+    (inbox / "notes.txt.tmp").write_bytes(b"x")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 0
+    assert (inbox / ".syncthing.x.pdf.tmp").exists()
+    assert (inbox / "notes.txt.tmp").exists()
+
+def test_tmp_strip_dedups_against_existing_inbox_file(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_pdf("real.pdf", ["Điều 1. Một"]).rename(inbox / "[Môn] X.pdf")      # real, clean
+    make_pdf("t.pdf", ["Điều 1. Hai"]).rename(inbox / "[Môn] X.pdf.tmp")     # collides on strip
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 2
+    subject = tmp_path / "Môn"
+    assert sorted(p.name for p in subject.glob("*.pdf")) == ["X (1).pdf", "X.pdf"]  # no clobber
+
+def test_double_tmp_normalized(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_pdf("src.pdf", ["Điều 1. Nội dung"]).rename(inbox / "[Môn] x.pdf.tmp.tmp")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1
+    assert (tmp_path / "Môn" / "x.pdf").exists()
+    assert not any(p.name.endswith(".tmp") for p in inbox.iterdir())
+
+def test_unstable_app_tmp_not_stripped_before_stable(make_pdf, tmp_path, monkeypatch):
+    # LƯU Ý 1: stability check runs on the .tmp candidate BEFORE the strip; an
+    # unstable (still-writing) file is left as-is, not renamed or processed.
+    import gu_library_worker.scan as scan_mod
+    paths, inbox = _kho(tmp_path)
+    make_pdf("src.pdf", ["Điều 1. Nội dung"]).rename(inbox / "[Môn] x.pdf.tmp")
+    seen = {}
+    def fake_stable(path, **kw):
+        seen["name"] = path.name
+        return False
+    monkeypatch.setattr(scan_mod, "wait_until_stable", fake_stable)
+    report = scan_once(paths, convert_fn=_convert)
+    assert report.processed == 0
+    assert (inbox / "[Môn] x.pdf.tmp").exists()         # not renamed
+    assert not (inbox / "[Môn] x.pdf").exists()         # not stripped
+    assert seen["name"] == "[Môn] x.pdf.tmp"            # stability saw the .tmp first
 
 def test_duplicate_target_gets_suffix(make_pdf, tmp_path):
     paths, inbox = _kho(tmp_path)

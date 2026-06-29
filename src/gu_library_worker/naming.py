@@ -17,6 +17,21 @@ def _is_free(subject: Path, stem: str, res: Reservations) -> bool:
         return False
     return True
 
+def dedup_name(directory: Path, name: str, claimed: set[str]) -> str:
+    """Return `name`, or `stem (k).ext` if it already exists in `directory` or
+    was claimed earlier this pass. The ` (k)` goes BEFORE the extension (so the
+    extension is never broken), mirroring the destination dedup. Records the
+    chosen name in `claimed`."""
+    p = Path(name)
+    stem, ext = p.stem, p.suffix
+    candidate = name
+    k = 0
+    while candidate in claimed or (directory / candidate).exists():
+        k += 1
+        candidate = f"{stem} ({k}){ext}"
+    claimed.add(candidate)
+    return candidate
+
 def resolve_target_stems(subject: Path, clean_name: str,
                          res: Reservations) -> tuple[Path, Path]:
     """Return (pdf_path, json_path) for `clean_name`, suffixing ` (n)` on

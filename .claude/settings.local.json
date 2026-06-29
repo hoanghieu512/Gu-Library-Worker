@@ -64,7 +64,9 @@
       "Bash(.venv/Scripts/python -m pytest tests/test_logsetup.py -q)",
       "Bash(git commit -q -m 'feat\\(v0.7.8\\): persistent rotating _worker.log for observability *)",
       "Bash(git commit -q -m 'fix\\(v0.7.9\\): register-task.ps1 indefinite repetition + verify success *)",
-      "Bash(git commit -q -m 'fix\\(v0.7.10\\): run Scheduled Task via pythonw.exe \\(no console flash\\) *)"
+      "Bash(git commit -q -m 'fix\\(v0.7.10\\): run Scheduled Task via pythonw.exe \\(no console flash\\) *)",
+      "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python -)",
+      "Bash(git commit -q -m 'feat\\(v0.7.11\\): normalize Samsung/SAF '\\\\''<ext>.tmp'\\\\'' names in _inbox *)"
     ]
   }
 }
