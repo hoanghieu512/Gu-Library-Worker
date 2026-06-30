@@ -1,7 +1,10 @@
 # scripts/register-task.ps1
 # Registers the worker to run every few minutes on the mini PC.
 param(
-    [Parameter(Mandatory = $true)][string]$KhoRoot,
+    # One or more kho roots. Pass several to watch multiple kho in one task:
+    #   -KhoRoot "D:\GuLibrary\kho","D:\GuLibrary-Prod\kho"
+    # They are scanned sequentially in one process (no parallel LibreOffice).
+    [Parameter(Mandatory = $true)][string[]]$KhoRoot,
     [string]$RepoRoot = (Resolve-Path "$PSScriptRoot\.."),
     [int]$IntervalMinutes = 3,
     # Optional. Leave empty to let the worker auto-detect LibreOffice
@@ -29,7 +32,8 @@ if (Test-Path $pythonw) {
     exit 1
 }
 
-$arguments = "-m gu_library_worker --kho `"$KhoRoot`""
+$arguments = "-m gu_library_worker"
+foreach ($k in $KhoRoot) { $arguments += " --kho `"$k`"" }
 if ($Soffice -ne "") { $arguments += " --soffice `"$Soffice`"" }
 
 $action = New-ScheduledTaskAction -Execute $exe -Argument $arguments -WorkingDirectory $RepoRoot
@@ -62,7 +66,8 @@ if (-not $task) {
 }
 
 Write-Host "Registered '$TaskName': runs every $IntervalMinutes min (indefinite), no console window."
+Write-Host "Watching $($KhoRoot.Count) kho (scanned sequentially):"
+foreach ($k in $KhoRoot) { Write-Host "  - $k   (log: $k\_worker.log)" }
 Write-Host "Verify  : Get-ScheduledTask -TaskName $TaskName"
-Write-Host "Logs    : $KhoRoot\_worker.log"
 Write-Host "One pass (with console output): $python $arguments"
 exit 0

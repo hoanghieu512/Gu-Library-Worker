@@ -66,7 +66,9 @@
       "Bash(git commit -q -m 'fix\\(v0.7.9\\): register-task.ps1 indefinite repetition + verify success *)",
       "Bash(git commit -q -m 'fix\\(v0.7.10\\): run Scheduled Task via pythonw.exe \\(no console flash\\) *)",
       "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python -)",
-      "Bash(git commit -q -m 'feat\\(v0.7.11\\): normalize Samsung/SAF '\\\\''<ext>.tmp'\\\\'' names in _inbox *)"
+      "Bash(git commit -q -m 'feat\\(v0.7.11\\): normalize Samsung/SAF '\\\\''<ext>.tmp'\\\\'' names in _inbox *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_multikho.py tests/test_cli.py tests/test_logsetup.py -q)",
+      "Bash(git commit -q -m 'feat\\(v0.8.0\\): watch multiple kho in one sequential process *)"
     ]
   }
 }

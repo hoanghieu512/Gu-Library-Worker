@@ -12,6 +12,12 @@ One pass manually (LibreOffice is auto-detected — no `--soffice` needed):
 
     .venv\Scripts\python -m gu_library_worker --kho "D:\path\to\kho"
 
+Watch multiple kho in one process — repeat `--kho`. They are scanned
+**sequentially** (one process, never two LibreOffice conversions at once), and
+one kho's failure is isolated from the rest:
+
+    .venv\Scripts\python -m gu_library_worker --kho "D:\GuLibrary\kho" --kho "D:\GuLibrary-Prod\kho"
+
 LibreOffice resolution order: `GULIB_SOFFICE` env var → standard install dirs
 (`C:\Program Files\LibreOffice\program\soffice.exe` and the `(x86)` variant) →
 `PATH`. If it's installed somewhere non-standard, point the worker at it:
@@ -25,6 +31,10 @@ Register the Scheduled Task (every 3 minutes, restarts after reboot):
 
     powershell -ExecutionPolicy Bypass -File scripts\register-task.ps1 -KhoRoot "D:\path\to\kho"
 
+For multiple kho, pass a comma-separated list:
+
+    powershell -ExecutionPolicy Bypass -File scripts\register-task.ps1 -KhoRoot "D:\GuLibrary\kho","D:\GuLibrary-Prod\kho"
+
 The worker is stateless: each run scans `_inbox/` once and exits. Files it can't
 handle (wrong extension, still being written, broken) are left in place on
 purpose — the app shows ⏳ as the signal to clean up by hand.
@@ -37,6 +47,10 @@ or failed (with tracebacks). This is how you debug a stuck file when the Schedul
 Task runs in the background and swallows stdout. The file rotates (≈1 MB × 3
 backups) so it can't grow unbounded, and its leading underscore keeps the app
 from treating it as data.
+
+Each kho gets its OWN `<kho>/_worker.log`, and every line is tagged with the kho
+label (its parent folder, e.g. `[GuLibrary-Prod]`) — so Prod and test stay cleanly
+separated even though one process serves both.
 
 It lives at the kho root, so Syncthing will replicate it. To keep it local to the
 mini PC, add a `.stignore` at the kho root containing:

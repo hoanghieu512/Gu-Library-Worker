@@ -5,7 +5,12 @@ from gu_library_worker.__main__ import build_arg_parser, run
 def test_arg_parser_requires_kho():
     parser = build_arg_parser()
     args = parser.parse_args(["--kho", "/some/kho"])
-    assert args.kho == "/some/kho"
+    assert args.kho == ["/some/kho"]            # --kho is repeatable -> list
+
+def test_arg_parser_accepts_multiple_kho():
+    parser = build_arg_parser()
+    args = parser.parse_args(["--kho", "/a", "--kho", "/b"])
+    assert args.kho == ["/a", "/b"]
 
 def test_arg_parser_errors_without_kho():
     parser = build_arg_parser()

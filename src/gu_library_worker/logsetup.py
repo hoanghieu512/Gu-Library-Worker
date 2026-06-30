@@ -10,6 +10,7 @@ app/test filters ignore it (same rule as ``_mon.json``).
 """
 from __future__ import annotations
 import logging
+from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -49,3 +50,36 @@ def attach_log_file(kho_root, *, max_bytes: int = 1_000_000,
     handler._gulib_logfile = str(log_path)  # type: ignore[attr-defined]
     logger.addHandler(handler)
     return handler
+
+@contextmanager
+def kho_logging(kho_root, label: str, *, max_bytes: int = 1_000_000,
+                backup_count: int = 3, level: int = logging.INFO):
+    """Attach a per-kho ``<kho>/_worker.log`` for the duration of one kho's scan.
+
+    The kho `label` is baked into every line (``... [label] message``) and the
+    handler is detached on exit, so each kho's log holds ONLY its own lines —
+    Prod and test stay cleanly separated even though one process serves both.
+    Yields the handler (or None if the dir is missing/unwritable; the caller
+    still logs the skip to stdout). Rotation caps size as in attach_log_file.
+    """
+    logger = logging.getLogger(_LOGGER_NAME)
+    if logger.getEffectiveLevel() > level:
+        logger.setLevel(level)
+    handler = None
+    root = Path(kho_root)
+    if root.is_dir():
+        try:
+            handler = RotatingFileHandler(root / LOG_NAME, maxBytes=max_bytes,
+                                          backupCount=backup_count, encoding="utf-8")
+            handler.setLevel(level)
+            handler.setFormatter(logging.Formatter(
+                f"%(asctime)s %(levelname)s [{label}] %(message)s"))
+            logger.addHandler(handler)
+        except OSError:
+            handler = None  # never let logging setup break a scan
+    try:
+        yield handler
+    finally:
+        if handler is not None:
+            logger.removeHandler(handler)
+            handler.close()
