@@ -76,7 +76,10 @@ def _read_pages(path: Path) -> tuple[list[list[list[tuple[str, list[float]]]]], 
     """Read each page as a list of blocks; each block is a list of (line_text, line_bbox)."""
     page_blocks: list[list[list[tuple[str, list[float]]]]] = []
     page_heights: list[float] = []
-    with fitz.open(str(path)) as doc:
+    # Open from bytes, not the path: PyMuPDF holds the file mmap'd briefly after
+    # close, which on Windows blocks deleting/moving a PDF-origin source later
+    # (WinError 32). Reading bytes first means no OS handle is held on the file.
+    with fitz.open(stream=path.read_bytes(), filetype="pdf") as doc:
         for page in doc:
             page_heights.append(float(page.rect.height))
             blocks: list[list[tuple[str, list[float]]]] = []

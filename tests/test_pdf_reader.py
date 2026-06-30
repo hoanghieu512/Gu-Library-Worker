@@ -1,6 +1,16 @@
 # tests/test_pdf_reader.py
 import re
 from gu_library_worker.readers.pdf_reader import read_pdf
+from gu_library_worker.pages import page_count
+
+def test_pdf_reader_does_not_lock_source(make_pdf):
+    # Regression (v0.8.1): PyMuPDF must not hold the source file open, or a
+    # follow-up unlink/move of a PDF-origin file fails on Windows (WinError 32).
+    p = make_pdf("x.pdf", ["Điều 1. Nội dung của điều."])
+    read_pdf(p)
+    page_count(p)
+    p.unlink()                 # must not raise: no lingering handle on the source
+    assert not p.exists()
 
 def test_legal_pdf_extracts_dieu(make_pdf):
     path = make_pdf("law.pdf", [

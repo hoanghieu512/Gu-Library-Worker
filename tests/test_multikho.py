@@ -31,9 +31,12 @@ def test_two_kho_both_processed_with_labeled_logs(make_pdf, tmp_path):
     rc = run(["--kho", str(a), "--kho", str(b)])
     assert rc == 0
 
-    # each kho filed its own document
+    # each kho filed its own document AND cleared its inbox (no PDF-origin file
+    # left stuck — the v0.8.1 WinError-32 regression that made only kho A process)
     assert (a / "Môn A" / "a.pdf").exists() and (a / "Môn A" / "a.json").exists()
     assert (b / "Môn B" / "b.pdf").exists() and (b / "Môn B" / "b.json").exists()
+    assert list((a / "_inbox").iterdir()) == []
+    assert list((b / "_inbox").iterdir()) == []
 
     # each kho's log exists and is labeled with ITS env, not the other's
     log_a = (a / "_worker.log").read_text(encoding="utf-8")

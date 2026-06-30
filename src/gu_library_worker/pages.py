@@ -5,8 +5,15 @@ import re
 import fitz  # PyMuPDF
 from gu_library_worker.schema import Unit
 
+def _open_pdf(pdf_path: Path):
+    # Open from an in-memory copy, never the path: PyMuPDF keeps the underlying
+    # file mmap'd briefly after close, and on Windows that makes a follow-up
+    # unlink/move of the source fail with WinError 32. Reading bytes first means
+    # no OS handle is ever held on the file.
+    return fitz.open(stream=Path(pdf_path).read_bytes(), filetype="pdf")
+
 def page_count(pdf_path: Path) -> int:
-    with fitz.open(str(pdf_path)) as doc:
+    with _open_pdf(pdf_path) as doc:
         return doc.page_count
 
 def _normalize(s: str) -> str:
@@ -18,7 +25,7 @@ def anchor_pages(units: list[Unit], pdf_path: Path) -> None:
     Units are in reading order, so search forward and keep the last hit as a
     monotonic floor. Mutates units in place. Fallback is the floor (>=1).
     """
-    with fitz.open(str(pdf_path)) as doc:
+    with _open_pdf(pdf_path) as doc:
         page_texts = [_normalize(page.get_text()) for page in doc]
     floor = 1
     for u in units:
