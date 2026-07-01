@@ -5,7 +5,8 @@ param(
     #   -KhoRoot "D:\GuLibrary\kho","D:\GuLibrary-Prod\kho"
     # They are scanned sequentially in one process (no parallel LibreOffice).
     [Parameter(Mandatory = $true)][string[]]$KhoRoot,
-    [string]$RepoRoot = (Resolve-Path "$PSScriptRoot\.."),
+    # Repo root. Leave empty to derive from this script's location (recommended).
+    [string]$RepoRoot = "",
     [int]$IntervalMinutes = 3,
     # Optional. Leave empty to let the worker auto-detect LibreOffice
     # (GULIB_SOFFICE env var > standard install dirs > PATH). Only set this to
@@ -15,6 +16,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Derive the repo root from THIS script's path. $PSScriptRoot is unreliable inside
+# a param default under `powershell -File` (it can be empty, making "$PSScriptRoot\.."
+# resolve to the drive root D:\). $PSCommandPath is the full path to the running
+# script and is reliable here in the body.
+if (-not $RepoRoot) {
+    $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { $MyInvocation.MyCommand.Path }
+    $RepoRoot = Split-Path -Parent (Split-Path -Parent $scriptPath)
+}
+$RepoRoot = (Resolve-Path $RepoRoot).Path
 
 # Run via pythonw.exe (no-console Python) so the task never flashes a terminal
 # window each pass. Output goes nowhere, but that's fine: the worker logs to
