@@ -51,11 +51,16 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
 
 # Register, then VERIFY — never claim success on a silent/failed registration.
+# -ErrorAction Stop is required: Register-ScheduledTask is a CIM cmdlet whose
+# "Access is denied" (needs admin) is a non-terminating error that $ErrorAction-
+# Preference='Stop' does NOT reliably convert, so without this the catch is
+# skipped and a stale single-kho task passes the existence check as false success.
 try {
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-        -Settings $settings -Description "Gu's Library: convert + extract _inbox" -Force | Out-Null
+        -Settings $settings -Description "Gu's Library: convert + extract _inbox" `
+        -Force -ErrorAction Stop | Out-Null
 } catch {
-    Write-Error "Failed to register '$TaskName': $($_.Exception.Message)"
+    Write-Error "Failed to register '$TaskName' (run PowerShell as Administrator?): $($_.Exception.Message)"
     exit 1
 }
 
@@ -63,6 +68,14 @@ $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if (-not $task) {
     Write-Error "Registration reported no error but '$TaskName' was not created."
     exit 1
+}
+# Confirm it is OUR registration (every kho present), not a stale pre-existing task.
+$registeredArgs = $task.Actions.Arguments
+foreach ($k in $KhoRoot) {
+    if ($registeredArgs -notlike "*--kho ""$k""*") {
+        Write-Error "'$TaskName' exists but does not watch '$k' (stale task not updated). Registered: $registeredArgs"
+        exit 1
+    }
 }
 
 Write-Host "Registered '$TaskName': runs every $IntervalMinutes min (indefinite), no console window."
