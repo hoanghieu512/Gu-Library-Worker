@@ -27,6 +27,11 @@ if (-not $RepoRoot) {
 }
 $RepoRoot = (Resolve-Path $RepoRoot).Path
 
+# Tolerate a comma-joined value. Invoking `powershell -File script.ps1 -KhoRoot "a","b"`
+# from inside PowerShell flattens the array to the single string "a,b"; split it back
+# so both that form and a real array (`& .\script.ps1 -KhoRoot "a","b"`) yield N kho.
+$KhoRoot = @($KhoRoot | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
 # Run via pythonw.exe (no-console Python) so the task never flashes a terminal
 # window each pass. Output goes nowhere, but that's fine: the worker logs to
 # <kho>/_worker.log (see logsetup). Fall back to python.exe with a clear warning
