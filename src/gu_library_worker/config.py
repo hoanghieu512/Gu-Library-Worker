@@ -29,4 +29,7 @@ class Paths:
         return self.kho_root / "_inbox"
 
     def subject_dir(self, subject: str) -> Path:
-        return self.kho_root / subject
+        # `subject` may be a "/"-joined nested path (e.g. "Môn/Bài giảng"); split
+        # it into real folders. A plain single-level subject is unchanged.
+        parts = [p for p in subject.split("/") if p]
+        return self.kho_root.joinpath(*parts) if parts else self.kho_root

@@ -183,6 +183,50 @@ def test_same_scan_two_inbox_files_same_target(make_pdf, tmp_path):
     assert sorted(p.name for p in subject.glob("*.pdf")) == ["doc (1).pdf", "doc.pdf"]
     assert sorted(p.name for p in subject.glob("*.json")) == ["doc (1).json", "doc.json"]
 
+def test_nested_prefix_filed_into_subfolder(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_pdf("s.pdf", ["Điều 1. Nội dung"]).rename(
+        inbox / "[Luật Đất đai][Bài giảng] x.pdf")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1
+    dest = tmp_path / "Luật Đất đai" / "Bài giảng"     # folder auto-created
+    assert (dest / "x.pdf").exists() and (dest / "x.json").exists()
+    assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())
+
+def test_nested_prefix_three_levels(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_pdf("s.pdf", ["Điều 1. Nội dung"]).rename(
+        inbox / "[Môn][Bài giảng][Chương 1] y.pdf")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert (tmp_path / "Môn" / "Bài giảng" / "Chương 1" / "y.pdf").exists()
+
+def test_nested_prefix_existing_folder_ok(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    (tmp_path / "Môn" / "Bài giảng").mkdir(parents=True)   # app pre-created + synced
+    make_pdf("s.pdf", ["Điều 1. Nội dung"]).rename(inbox / "[Môn][Bài giảng] z.pdf")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1 and report.failed == 0
+    assert (tmp_path / "Môn" / "Bài giảng" / "z.pdf").exists()
+
+def test_nested_prefix_dup_suffixed_in_subfolder(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    dest = tmp_path / "Môn" / "Bài giảng"
+    dest.mkdir(parents=True)
+    (dest / "z.pdf").write_bytes(b"%PDF-1.4 existing")
+    make_pdf("s.pdf", ["Điều 1. Mới"]).rename(inbox / "[Môn][Bài giảng] z.pdf")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert (dest / "z.pdf").exists() and (dest / "z (1).pdf").exists()  # no overwrite
+    assert (dest / "z (1).json").exists()
+
+def test_unsafe_nested_prefix_goes_to_unclassified_not_stuck(make_pdf, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_pdf("s.pdf", ["Điều 1. Nội dung"]).rename(inbox / "[Môn][..] evil.pdf")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1 and report.failed == 0
+    assert (tmp_path / "Chưa phân loại" / "evil.pdf").exists()     # safe area, in kho
+    assert not (tmp_path.parent / "evil.pdf").exists()            # never escaped kho
+    assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())
+
 def test_image_pdf_filed_not_stuck(tmp_path):
     # A scanned/image PDF (0 text) must be filed with a minimal sidecar, not fail
     # the validator and stay stuck in _inbox retrying forever.
