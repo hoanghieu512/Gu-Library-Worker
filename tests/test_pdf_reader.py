@@ -1,7 +1,49 @@
 # tests/test_pdf_reader.py
 import re
-from gu_library_worker.readers.pdf_reader import read_pdf
+import fitz
+from gu_library_worker.readers.pdf_reader import read_pdf, IMAGE_PAGE_MARKER
 from gu_library_worker.pages import page_count
+from gu_library_worker.schema import Document, to_sidecar, validate_sidecar
+
+def _blank_pdf(path, pages):
+    doc = fitz.open()
+    for _ in range(pages):
+        doc.new_page()          # a page with no text layer (like a scan/image)
+    doc.save(path); doc.close()
+    return path
+
+def test_image_pdf_gets_minimal_valid_sidecar(tmp_path):
+    # scanned/image PDF: 0 text on every page -> minimal per-page sidecar, not fail
+    p = _blank_pdf(tmp_path / "scan.pdf", 3)
+    ext = read_pdf(p)
+    assert ext.kind == "prose"
+    assert len(ext.units) == 3                     # one unit per page
+    for i, u in enumerate(ext.units, start=1):
+        assert u.type == "paragraph"
+        assert u.page == i
+        assert IMAGE_PAGE_MARKER in u.text         # stable marker for Phase 2 OCR
+        x0, y0, x1, y1 = u.bbox                     # full-page bbox, valid rect
+        assert x0 < x1 and y0 < y1
+    # the whole point: this now PASSES the schema validator
+    doc = Document(title="scan", source="watch", sourceFormat="pdf", kind=ext.kind,
+                   units=ext.units, addedAt="2026-07-01T00:00:00+07:00", pageCount=3)
+    assert validate_sidecar(to_sidecar(doc)) == []
+
+def test_text_pdf_not_treated_as_image(make_pdf):
+    p = make_pdf("law.pdf", ["Điều 1. Nội dung có chữ đầy đủ."])
+    ext = read_pdf(p)
+    assert ext.kind == "legal"
+    assert not any(IMAGE_PAGE_MARKER in u.text for u in ext.units)  # not degraded
+
+def test_mixed_pdf_uses_text_branch(make_pdf, tmp_path):
+    # page 1 has text, page 2 is blank -> ANY text means normal branch, not image
+    src = make_pdf("mixed.pdf", ["Điều 1. Trang có chữ."])
+    doc = fitz.open(src); doc.new_page()           # append a text-less page
+    out = tmp_path / "mixed2.pdf"; doc.save(out); doc.close()
+    ext = read_pdf(out)
+    assert ext.kind == "legal"
+    assert any(u.type == "dieu" for u in ext.units)
+    assert not any(IMAGE_PAGE_MARKER in u.text for u in ext.units)
 
 def test_pdf_reader_does_not_lock_source(make_pdf):
     # Regression (v0.8.1): PyMuPDF must not hold the source file open, or a

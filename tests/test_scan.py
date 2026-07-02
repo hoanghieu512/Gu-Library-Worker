@@ -183,6 +183,19 @@ def test_same_scan_two_inbox_files_same_target(make_pdf, tmp_path):
     assert sorted(p.name for p in subject.glob("*.pdf")) == ["doc (1).pdf", "doc.pdf"]
     assert sorted(p.name for p in subject.glob("*.json")) == ["doc (1).json", "doc.json"]
 
+def test_image_pdf_filed_not_stuck(tmp_path):
+    # A scanned/image PDF (0 text) must be filed with a minimal sidecar, not fail
+    # the validator and stay stuck in _inbox retrying forever.
+    import fitz
+    paths, inbox = _kho(tmp_path)
+    p = inbox / "[Tố tụng Hình sự] scan.pdf"
+    doc = fitz.open(); doc.new_page(); doc.new_page(); doc.save(p); doc.close()
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1 and report.failed == 0
+    subject = tmp_path / "Tố tụng Hình sự"
+    assert (subject / "scan.pdf").exists() and (subject / "scan.json").exists()
+    assert not any(x.name.endswith(".pdf") for x in inbox.iterdir())  # not stuck
+
 def test_worker_never_ingests_stversions(make_pdf, tmp_path):
     # Syncthing versioning lives at the share root (sibling of _inbox) and the
     # worker only scans _inbox/ non-recursively, so versioned files are never

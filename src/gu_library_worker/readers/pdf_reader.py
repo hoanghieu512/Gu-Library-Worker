@@ -162,10 +162,38 @@ def _pdf_lines(path: Path) -> tuple[list[Line], list[tuple[str, int, list[float]
                                _union([b for _, b in kept])))
     return lines, blocks_out
 
+# Placeholder text for a scanned/image PDF page (no text layer). Kept non-empty
+# so the sidecar passes the "text must not be empty" rule, and carries a stable
+# marker so Phase 2 (OCR) can find pages that still need text extraction.
+IMAGE_PAGE_MARKER = "[trang ảnh scan — chưa có lớp văn bản]"
+
+def _image_pdf_units(path: Path) -> list[Unit]:
+    """One minimal unit per page for a text-less (scanned/image) PDF.
+
+    The Viewer renders the page image regardless of text, so the doc becomes
+    readable and stops being stuck in _inbox. Schema-safe: type `paragraph`,
+    non-empty placeholder text, full-page bbox. No OCR here (that's Phase 2)."""
+    units: list[Unit] = []
+    with fitz.open(stream=path.read_bytes(), filetype="pdf") as doc:
+        for i, page in enumerate(doc, start=1):
+            r = page.rect
+            units.append(Unit(
+                type="paragraph", label=f"Trang {i}", path=[],
+                text=f"{IMAGE_PAGE_MARKER} (trang {i})",
+                page=i, bbox=[float(r.x0), float(r.y0), float(r.x1), float(r.y1)],
+            ))
+    return units
+
 def read_pdf(path: Path) -> Extraction:
     lines, blocks = _pdf_lines(path)
     if has_legal_structure(lines):
         return Extraction(kind="legal", units=parse_legal(lines))
+    if not blocks:
+        # No text anywhere -> scanned/image PDF. Emit a minimal per-page sidecar
+        # instead of failing on empty units (which stuck the file in _inbox).
+        # Any text on any page takes the normal path above, so a mixed PDF is
+        # NOT degraded here.
+        return Extraction(kind="prose", units=_image_pdf_units(path))
     units = [Unit(type="paragraph", label="", path=[], text=text, page=pno, bbox=bbox)
              for text, pno, bbox in blocks]
     return Extraction(kind="prose", units=units)
