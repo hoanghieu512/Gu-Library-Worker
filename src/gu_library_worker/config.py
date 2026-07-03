@@ -28,6 +28,12 @@ class Paths:
     def inbox(self) -> Path:
         return self.kho_root / "_inbox"
 
+    @property
+    def archive_dir(self) -> Path:
+        # Local archive for originals we replaced (e.g. heavy scans). A SIBLING of
+        # the kho, so it is OUTSIDE the Syncthing folder (never synced / in-kho).
+        return self.kho_root.with_name(self.kho_root.name + "_archive")
+
     def subject_dir(self, subject: str) -> Path:
         # `subject` may be a "/"-joined nested path (e.g. "Môn/Bài giảng"); split
         # it into real folders. A plain single-level subject is unchanged.

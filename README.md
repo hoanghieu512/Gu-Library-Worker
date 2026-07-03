@@ -57,3 +57,23 @@ mini PC, add a `.stignore` at the kho root containing:
 
     _worker.log
     _worker.log.*
+
+## Heavy scan normalization
+
+A **scanned/image PDF** (no text layer) whose page rasters are too heavy for a
+phone viewer (effective resolution > ~200 dpi and/or JPEG2000 encoding) is
+republished into the kho as a lighter **150 dpi JPEG** version — same page count
+and page size, visually indistinguishable when read, but far cheaper to decode
+(so the app doesn't OOM/crash opening it). Grayscale pages become grayscale;
+pages with real colour (a stamp) stay RGB. **PDFs with a text layer are never
+re-rastered**, and already-light scans pass through untouched.
+
+The untouched original is moved to a local archive next to the kho —
+`<kho>_archive/` (a sibling of the kho, so it is NOT inside the Syncthing folder
+and never syncs). The archive path is logged.
+
+Timing note: normalization is ~0.8 s/page, so a large scan can make one pass take
+a couple of minutes. Since kho are scanned sequentially in one process, this can
+delay the other kho's scan by up to that one pass — it self-heals on the next
+3-minute run. This is intentional (no parallel LibreOffice); the loop
+architecture is unchanged.

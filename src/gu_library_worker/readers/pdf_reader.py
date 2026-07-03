@@ -193,7 +193,7 @@ def read_pdf(path: Path) -> Extraction:
         # instead of failing on empty units (which stuck the file in _inbox).
         # Any text on any page takes the normal path above, so a mixed PDF is
         # NOT degraded here.
-        return Extraction(kind="prose", units=_image_pdf_units(path))
+        return Extraction(kind="prose", units=_image_pdf_units(path), image_pdf=True)
     units = [Unit(type="paragraph", label="", path=[], text=text, page=pno, bbox=bbox)
              for text, pno, bbox in blocks]
     return Extraction(kind="prose", units=units)

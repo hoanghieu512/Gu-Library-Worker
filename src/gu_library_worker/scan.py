@@ -1,6 +1,7 @@
 # src/gu_library_worker/scan.py
 from __future__ import annotations
 import logging
+import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,6 +76,15 @@ def scan_once(paths: Paths, *, convert_fn: Callable[..., Path] = default_convert
                 subject_dir = paths.subject_dir(prepared.subject)
                 pdf_dst, json_dst = resolve_target_stems(
                     subject_dir, prepared.clean_name, reservations)
+                if prepared.normalized:
+                    # archive the heavy original OUT of the kho (not synced) before
+                    # publishing the normalized copy; move -> entry leaves _inbox,
+                    # so write_pair's delete becomes a no-op.
+                    paths.archive_dir.mkdir(parents=True, exist_ok=True)
+                    archived = paths.archive_dir / dedup_name(
+                        paths.archive_dir, entry.name, claimed_inbox)
+                    shutil.move(str(entry), str(archived))
+                    log.info("normalized heavy scan; archived original -> %s", archived)
                 write_pair(prepared.canonical_pdf, prepared.sidecar,
                            pdf_dst, json_dst, entry)
             report.processed += 1

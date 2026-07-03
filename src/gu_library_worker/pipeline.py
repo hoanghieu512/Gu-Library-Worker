@@ -14,6 +14,7 @@ from .readers.pptx_reader import read_pptx
 from .readers.pdf_reader import read_pdf
 from .pages import anchor_pages, page_count
 from .convert import to_pdf as default_convert
+from .normalize import is_heavy_scan, normalize_pdf
 
 VN_TZ = timezone(timedelta(hours=7))
 
@@ -23,6 +24,8 @@ class Prepared:
     sidecar: dict
     subject: str
     clean_name: str
+    normalized: bool = False  # True when the kho copy is a re-rastered version
+                              # of `src` (the original must be archived, not deleted)
 
 def _now_iso() -> str:
     return datetime.now(VN_TZ).isoformat(timespec="seconds")
@@ -48,9 +51,19 @@ def process_one_file(
     ext = src.suffix.lower()
     source_format = SOURCE_FORMAT[ext]
 
+    normalized = False
     if ext == ".pdf":
         canonical_pdf = src
         extraction = read_pdf(src)
+        # Zero-text (scanned/image) PDF whose page rasters are too heavy for a
+        # phone viewer -> republish a lighter 150dpi JPEG version into the kho.
+        # Text PDFs and already-light scans are never re-rastered.
+        if extraction.image_pdf and is_heavy_scan(src):
+            normalized_pdf = tmp_workdir / (src.stem + "_normalized.pdf")
+            normalize_pdf(src, normalized_pdf)
+            canonical_pdf = normalized_pdf
+            extraction = read_pdf(canonical_pdf)   # sidecar matches the kho copy
+            normalized = True
     elif ext in (".docx", ".pptx"):
         canonical_pdf = convert_fn(src, tmp_workdir)
         extraction = _read(src, ext)
@@ -74,4 +87,5 @@ def process_one_file(
         sidecar=to_sidecar(doc),
         subject=parsed.subject,
         clean_name=parsed.clean_name,
+        normalized=normalized,
     )

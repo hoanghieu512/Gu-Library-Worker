@@ -13,3 +13,4 @@ class Line:
 class Extraction:
     kind: str             # legal | slide | prose
     units: list[Unit]
+    image_pdf: bool = False  # True for a zero-text (scanned/image) PDF

@@ -227,6 +227,46 @@ def test_unsafe_nested_prefix_goes_to_unclassified_not_stuck(make_pdf, tmp_path)
     assert not (tmp_path.parent / "evil.pdf").exists()            # never escaped kho
     assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())
 
+def _heavy_scan_inbox(inbox, name, pages=2, img_w=500):
+    import fitz
+    p = inbox / name
+    doc = fitz.open()
+    for _ in range(pages):
+        page = doc.new_page(width=150, height=200)               # small page, fast
+        pm = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, img_w, round(img_w * 200 / 150)))
+        pm.set_rect(pm.irect, (235, 235, 235))
+        page.insert_image(page.rect, pixmap=pm)
+    doc.save(p); doc.close()
+    return p
+
+def _max_img_width(pdf):
+    import fitz
+    with fitz.open(pdf) as d:
+        return max(img[2] for page in d for img in page.get_images(full=True))
+
+def test_heavy_scan_normalized_and_original_archived(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    src = _heavy_scan_inbox(inbox, "[Tố tụng Hình sự] scan.pdf")
+    src_size, src_w = src.stat().st_size, _max_img_width(src)
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1 and report.failed == 0
+    subj = tmp_path / "Tố tụng Hình sự"
+    kho_pdf = subj / "scan.pdf"
+    assert kho_pdf.exists() and (subj / "scan.json").exists()
+    assert _max_img_width(kho_pdf) < src_w                       # kho copy is lighter
+    # original archived OUT of the kho (sibling _archive, never synced)
+    archived = list(paths.archive_dir.glob("*.pdf"))
+    assert len(archived) == 1 and archived[0].stat().st_size == src_size   # untouched
+    assert paths.kho_root not in paths.archive_dir.parents       # outside the kho
+    assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())  # inbox cleared
+
+def test_heavy_scan_normalized_into_nested_subfolder(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    _heavy_scan_inbox(inbox, "[Môn][Bài giảng] scan.pdf", pages=1)
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert (tmp_path / "Môn" / "Bài giảng" / "scan.pdf").exists()
+    assert list(paths.archive_dir.glob("*.pdf"))                 # original archived
+
 def test_image_pdf_filed_not_stuck(tmp_path):
     # A scanned/image PDF (0 text) must be filed with a minimal sidecar, not fail
     # the validator and stay stuck in _inbox retrying forever.
