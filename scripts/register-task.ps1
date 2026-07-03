@@ -65,6 +65,10 @@ $trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
 
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+# S4U = run whether the user is logged on or not (no stored password), so the
+# worker survives a reboot with no logon and runs headless (session 0, no window).
+$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
+    -LogonType S4U -RunLevel Limited
 
 # Register, then VERIFY — never claim success on a silent/failed registration.
 # -ErrorAction Stop is required: Register-ScheduledTask is a CIM cmdlet whose
@@ -73,7 +77,8 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
 # skipped and a stale single-kho task passes the existence check as false success.
 try {
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-        -Settings $settings -Description "Gu's Library: convert + extract _inbox" `
+        -Settings $settings -Principal $principal `
+        -Description "Gu's Library: convert + extract _inbox" `
         -Force -ErrorAction Stop | Out-Null
 } catch {
     Write-Error "Failed to register '$TaskName' (run PowerShell as Administrator?): $($_.Exception.Message)"

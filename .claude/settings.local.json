@@ -73,7 +73,9 @@
       "Bash(git commit -q -m 'fix\\(v0.8.2\\): register-task.ps1 no false success on Access-denied + verify both kho *)",
       "Bash(.venv/Scripts/python -m pytest tests/test_pdf_reader.py tests/test_scan.py -q)",
       "Bash(.venv/Scripts/python -m pytest tests/test_prefix.py tests/test_config.py tests/test_scan.py -q)",
-      "Bash(.venv/Scripts/python -m pytest tests/test_normalize.py tests/test_pipeline.py tests/test_scan.py -q)"
+      "Bash(.venv/Scripts/python -m pytest tests/test_normalize.py tests/test_pipeline.py tests/test_scan.py -q)",
+      "Bash(sed -i 's/version = \"0.10.0\"/version = \"0.11.0\"/' pyproject.toml)",
+      "Bash(sed -i 's/__version__ = \"0.10.0\"/__version__ = \"0.11.0\"/' src/gu_library_worker/__init__.py)"
     ]
   }
 }

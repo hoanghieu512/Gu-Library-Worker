@@ -77,3 +77,48 @@ a couple of minutes. Since kho are scanned sequentially in one process, this can
 delay the other kho's scan by up to that one pass — it self-heals on the next
 3-minute run. This is intentional (no parallel LibreOffice); the loop
 architecture is unchanged.
+
+## Prod ops: Drive print queue + weekly backup (rclone)
+
+Two Scheduled Tasks, **Prod only**, independent of `GuLibraryWorker`:
+
+- **GuLibraryPrintSync** — every 15 min, mirrors `<kho>/_print/` up to Google Drive
+  `GuLibrary/Di-in`. `rclone sync` is a mirror: ticking "Xong" (file leaves
+  `_print/`) removes it from Drive next run, so the Drive folder always equals the
+  current print queue.
+- **GuLibraryBackup** — weekly, makes a dated snapshot `<kho-parent>\backup\YYYY-MM-DD\`
+  (a sibling of the kho, **outside the Syncthing tree**), keeps the newest 4, then
+  mirrors `backup\` to Drive `GuLibrary/Backup`. `.stversions` is excluded from the
+  snapshot.
+
+Each task logs to `<kho-parent>\_print-sync.log` / `_backup.log` (outside the kho).
+On a network/Drive error they log and exit; the next scheduled run retries (no
+in-place retry loop, no popup). Tasks run **whether logged on or not** (S4U), so
+they survive a reboot with no logon and run headless (no window).
+
+### One-time manual setup (Gú, on the mini PC)
+
+1. **Install rclone** (https://rclone.org/downloads/) and put `rclone.exe` on PATH.
+2. **Configure the Google Drive remote** (opens a browser once for OAuth):
+
+       rclone config
+       # n) new remote  -> name it e.g. "gdrive"  -> storage: "drive"
+       # accept defaults, authorize in the browser, confirm
+
+3. **Test by hand before trusting the tasks:**
+
+       rclone lsd gdrive:                                   # lists Drive, proves auth
+       rclone sync "D:\GuLibrary-Prod\kho\_print" gdrive:GuLibrary/Di-in
+       powershell -File scripts\backup.ps1 -KhoRoot "D:\GuLibrary-Prod\kho" -SkipDrive   # snapshot only
+
+4. **Register both tasks (ADMINISTRATOR PowerShell):**
+
+       powershell -File scripts\register-ops-tasks.ps1 -KhoRoot "D:\GuLibrary-Prod\kho" -RcloneRemote "gdrive"
+
+   Verify: `Get-ScheduledTask GuLibraryPrintSync,GuLibraryBackup`.
+
+Notes: the S4U task loads your profile, so it uses your `%APPDATA%\rclone\rclone.conf`.
+If the task can't find the config, pass an explicit path to both the register
+script and it forwards it: `-RcloneConfig "C:\path\to\rclone.conf"`. Re-run
+`register-task.ps1` too (it now registers `GuLibraryWorker` as S4U for the same
+reboot-without-logon behavior).
