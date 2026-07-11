@@ -1,7 +1,8 @@
 # Gú's Library — Ghi chú vận hành QA / Prod
 
-*Cập nhật 2026-07-10, trạng thái: app v1.17.0 · worker v0.11.0. File này dành cho huynh
-(và CC mini PC khi cần dựng lại) — không phải tài liệu cho Gú.*
+*Cập nhật 2026-07-10, trạng thái: app v1.17.0 · worker v0.11.0. **Bản hợp nhất** —
+nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn Obsidian. File này
+dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 > **Prod đã có người dùng thật.** Gú đang dùng hằng ngày trên máy của Gú. Mọi thay đổi
 > chạm Prod từ đây tính là chạm vào công cụ học của một người thật, không còn là sân tập.
@@ -35,15 +36,16 @@
   KHÔNG chạy song song để tránh LibreOffice headless khóa profile.
 - Scheduled Task `GuLibraryWorker` mỗi 3 phút, chạy `pythonw` (không cửa sổ).
   Task Scheduler tự lo restart sau reboot — không có daemon để chăm.
-- Quan sát duy nhất: `<kho>\_worker.log` (RotatingFileHandler 1MB×3, `_`-prefix nên app
-  bỏ qua, `.stignore` giữ local). **Mỗi kho một log riêng**, mỗi dòng gắn nhãn kho
+- Quan sát: `<kho>\_worker.log` (RotatingFileHandler 1MB×3, `_`-prefix nên app bỏ qua,
+  `.stignore` giữ local). **Mỗi kho một log riêng**, mỗi dòng gắn nhãn kho
   (`[GuLibrary]` / `[GuLibrary-Prod]`) — soi Prod vs QA không lẫn. Console không hiện
   gì là **bình thường**.
 - File nặng (PDF scan jpx/DPI cao) được chuẩn hóa ~0.8s/trang → một quyển lớn có thể
   kéo một vòng quét dài vài phút, kho còn lại trễ tối đa một vòng, tự lành vòng sau.
-- Bản gốc trước chuẩn hóa move sang folder archive sibling `…\kho_archive\` (vd
+  PDF có text layer / scan nhẹ sẵn **KHÔNG** bị chuẩn hóa.
+- Bản gốc trước chuẩn hóa được move sang folder archive sibling `…\kho_archive\` (vd
   `D:\GuLibrary-Prod\kho_archive\`, ngoài Syncthing) — dọn tay định kỳ nếu đầy đĩa,
-  không có gì tự xóa. PDF có text layer / scan nhẹ sẵn KHÔNG bị chuẩn hóa.
+  không có gì tự xóa.
 - **Hai task hạ tầng riêng (v0.11.0 — ĐANG CHẠY, độc lập với `GuLibraryWorker`, chết
   độc lập):** `GuLibraryPrintSync` (mirror `_print/` Prod → `gdrive:GuLibrary/Di-in`
   mỗi ~15 phút) và `GuLibraryBackup` (CN 03:00 — robocopy snapshot → `rclone sync` lên
@@ -51,8 +53,9 @@
   Log riêng, **NGOÀI kho**: `D:\GuLibrary-Prod\_print-sync.log` và `_backup.log`. rclone
   cài user-scope (winget), remote tên `gdrive`, config OAuth ở `%APPDATA%\rclone\rclone.conf`.
 - **Cả 3 Scheduled Task chạy principal S4U** (run-whether-logged-on-or-not) → sống lại
-  sau reboot **không cần ai logon**, và headless (session 0, không cửa sổ). Đổi/thêm task
-  phải giữ S4U; các register script đã set sẵn.
+  sau reboot **không cần ai logon**, và headless (session 0, không cửa sổ). Đây chính là
+  cái làm "reboot tự dậy" ở §4/§6 thành sự thật. Đổi/thêm task phải giữ S4U; các
+  register script đã set sẵn.
 
 ## 4. Dựng máy mới vào cụm (hoặc dựng lại từ đầu) — 6 bước
 
@@ -62,15 +65,24 @@
    (simple versioning) bật — đây là lưới M8.
 3. **Máy Android mới:** cài Syncthing-Fork → trao đổi device-ID với mini PC → share
    ĐÚNG MỘT folder (QA hoặc Prod, không bao giờ cả hai) → chờ sync xong lượt đầu.
-4. **Worker:** nếu là kho mới, thêm đường dẫn vào `-KhoRoot` (tách phẩy) của Scheduled
+4. **Worker:** *(mini PC mới — dựng môi trường trước:* cài Python 3.11+ và LibreOffice,
+   `git clone` repo worker, `python -m venv .venv` rồi `.venv\Scripts\python -m pip install
+   -e .`; soffice auto-detect nên không cần sửa PATH — chi tiết README worker.*)*
+   Nếu là kho mới, thêm đường dẫn vào `-KhoRoot` (tách phẩy) của Scheduled
    Task; chạy `scripts\register-task.ps1` (Admin) và **tin vào bước verify của nó** (nó tự
    `Get-ScheduledTask` kiểm trước khi báo thành công — bài học v0.7.9 báo-thành-công-giả).
    **Nếu dựng lại Prod** cần thêm 2 task hạ tầng: cài rclone + `rclone config` (remote
    `gdrive`, OAuth — xem README worker mục "Prod ops") rồi
    `scripts\register-ops-tasks.ps1 -KhoRoot "D:\GuLibrary-Prod\kho" -RcloneRemote "gdrive"` (Admin).
-5. **App:** cài APK release (cùng keystore — cài đè không mất data); Cài đặt → Folder kho
-   → chọn đúng folder qua SAF; kiểm badge "Đã đồng bộ" (giờ dựa connected của device
-   mini PC, không dựa tên kho).
+5. **App (dựng + cài APK release, làm trên máy Mac):** bump version = sửa **1 chỗ**
+   `versionName` trong `package.json` (`versionCode` tĩnh =2 ở build.gradle — không tăng,
+   sideload không cần). Dựng: `cd android && ./gradlew assembleRelease` →
+   `app/build/outputs/apk/release/Gu-Library-<ver>-release.apk`. Keystore ngoài repo
+   `~/keystores/gu-library/gu-library-release.jks`, credential `android/keystore.properties`
+   (gitignored). Cài lên máy: release-đè-release **cùng keystore** không mất data;
+   release-**đè-debug phải gỡ trước** (khác chữ ký → `install -r` báo lỗi). Rồi Cài đặt →
+   Folder kho → chọn đúng folder qua SAF; kiểm badge "Đã đồng bộ" (dựa connected của
+   device mini PC, không dựa tên kho).
 6. **Smoke:** bỏ 1 file PDF qua đường Share vào một môn → thấy ⏳ → chờ vòng worker →
    thành tài liệu mở được. Thông chuỗi này = môi trường sống.
 
@@ -83,13 +95,16 @@
   Obsidian. Không có cơ chế tự đồng bộ. Lệch một nơi = hỏng hợp đồng dữ liệu dài hạn,
   và sidecar là hợp đồng phục vụ cả những feature Phase 2 chưa viết. Sửa schema ở đâu
   thì phải sửa đủ ba, ngay trong cùng session.
+  **Bản chốt phía worker: `Docs/gu-library-sidecar-schema.md`;** `validate_sidecar` kiểm
+  đúng theo đó, gồm cả `bbox` (optional) và `IMAGE_PAGE_MARKER` cho PDF-ảnh. Nếu doc bên
+  app mô tả sidecar, phải khớp đúng hai field này.
 - **Kho Prod — chuỗi backup đang chạy (v0.11.0):** hàng tuần robocopy snapshot theo ngày
   vào `D:\GuLibrary-Prod\backup\` (giữ 4 bản gần nhất; snapshot **loại `.stversions`** cho
   gọn — chiều sâu thời gian là các bản-ngày, không phải version-history của Syncthing) →
   xong `rclone sync` folder backup lên Drive `GuLibrary/Backup` (offsite thật, vá ca
-  mất-cả-cụm). Lưu ý trung thực:
-  ransomware mã hóa local rồi nhịp sync kế chạy thì bản Drive bị đè theo, nhưng Drive
-  trash + version history ~30 ngày vẫn là cửa lùi cuối. Mức này chấp nhận đủ.
+  mất-cả-cụm). Lưu ý trung thực: ransomware mã hóa local rồi nhịp sync kế chạy thì bản
+  Drive bị đè theo, nhưng Drive trash + version history ~30 ngày vẫn là cửa lùi cuối.
+  Mức này chấp nhận đủ.
 - **`_print/` (Prod) → Drive `GuLibrary/Di-in`, mirror mỗi ~15 phút** (chính là M9
   mức A, về sớm không cần đụng app/worker): folder Drive luôn = hàng đợi cần in hiện
   tại — Gú tick "Xong" là file rời cả Drive; share link viewer cho người in một lần
@@ -101,6 +116,10 @@
 
 - **App báo "Chưa thấy mini PC":** kiểm Syncthing mini PC đang chạy (service) + máy đó
   connected trong Syncthing UI. Từ v1.2.1 badge chỉ sai khi device thật sự mất kết nối.
+- **App (Cài đặt) hiện version cũ sau khi update:** `versionName` được **nướng vào APK
+  lúc build** (build.gradle đọc `package.json`), không đọc runtime → cài lại một APK dựng
+  *trước* lúc bump sẽ vẫn hiện số cũ dù code mới. Không phải bug: dựng LẠI `assembleRelease`
+  sau khi bump rồi cài đè (đã gặp thật v1.16.0→v1.17.0).
 - **File kẹt ⏳ lâu:** mở `<kho>\_worker.log`. File đuôi lạ/tmp kẹt lại là *tín hiệu
   dọn tay theo thiết kế*, worker không tự xóa. Segment tiền tố độc → worker route về
   "Chưa phân loại" + WARNING trong log.
@@ -109,8 +128,8 @@
   Chỉ theo dõi xem có tái diễn thành mẫu hình lặp lại hay không; nếu chỉ lẻ tẻ thì bỏ qua.
 - **Nghi hai kho lẫn nhau:** kiểm từng máy Android chỉ share đúng 1 folder-ID;
   kiểm `-KhoRoot` của task đúng 2 đường dẫn.
-- **Mini PC vừa reboot:** không phải làm gì — service Syncthing + Scheduled Task tự dậy.
-  Chỉ kiểm nếu 15 phút sau file vẫn kẹt.
+- **Mini PC vừa reboot:** không phải làm gì — service Syncthing + Scheduled Task (S4U)
+  tự dậy. Chỉ kiểm nếu 15 phút sau file vẫn kẹt.
 - **Nghi rclone chết:** hai task hạ tầng chết độc lập với worker — worker chạy ngon
   không nói lên rclone còn sống. Kiểm `D:\GuLibrary-Prod\_print-sync.log` / `_backup.log`
   và `Get-ScheduledTask GuLibraryPrintSync,GuLibraryBackup | Get-ScheduledTaskInfo |
