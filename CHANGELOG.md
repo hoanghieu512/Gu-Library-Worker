@@ -5,6 +5,12 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.13.0] — 2026-07-13 — Beat B: archive gốc `.doc`/`.ppt` thay vì xóa
+### Changed
+- **Nhánh `.doc`/`.ppt` (OLE cũ) giờ CẤT gốc vào `<kho>_archive/` thay vì xóa.** Các định dạng này đi qua LibreOffice→PDF rồi extract từ PDF nên sidecar degrade về `paragraph` (mất Điều/Khoản/slide); giữ nguồn OOXML để phase 2 re-extract cấu trúc khi làm search. Tái dùng đúng khu archive sẵn có (sibling ngoài Syncthing), giữ tên gốc kèm tiền tố như archive scan; trùng tên → suffix `(n)` (dedup chống-đè), không đè bản cũ.
+### Notes
+- Chỉ nhánh degrade `.doc`/`.ppt`. `.docx`/`.pptx` (đã rút cấu trúc giàu từ nguồn) + PDF gốc GIỮ NGUYÊN — gốc vẫn bị xóa như cũ. Cơ chế qua cờ mới `Prepared.archive_original` (heavy re-raster HOẶC legacy OLE) tách khỏi `normalized` (re-raster); scan archive theo cờ này. KHÔNG build pre-convert doc→docx / rút cấu trúc ở beat này. 162 pass / 1 skip (+7 test).
+
 ## [0.12.0] — 2026-07-13 — Beat A: đóng ảnh thành PDF một trang
 ### Added
 - **Nhận file ảnh trong `_inbox/`** (`.jpg/.jpeg/.png/.webp/.gif/.bmp/.tif/.tiff`): mỗi ảnh → **một PDF 1 trang riêng**, khổ trang = tỉ lệ ảnh (ảnh ngang → trang NGANG, không ép dọc, không méo). Mỗi ảnh là một tài liệu độc lập — KHÔNG bao giờ gộp nhiều ảnh. `images.image_to_single_page_pdf` (cạnh dài = 842pt/A4, nhúng JPEG giữ nguyên bytes → không re-encode, giữ nét); nhánh ảnh cắm ở `process_one_file` giữa `.pdf` và `.docx/.pptx`, rồi đi tiếp pipeline sidecar/tiền tố/đặt vào môn như thường.

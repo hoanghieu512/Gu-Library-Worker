@@ -59,10 +59,28 @@ def test_heavy_image_pdf_is_normalized(tmp_path):
     src_w = _max_img_width(src)
     prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
     assert prepared.normalized is True
+    assert prepared.archive_original is True                    # heavy original archived
     assert prepared.canonical_pdf != src                       # a new, lighter file
     assert _max_img_width(prepared.canonical_pdf) < src_w      # fewer pixels to decode
     assert prepared.sidecar["pageCount"] == 2                  # sidecar matches kho copy
     assert validate_sidecar(prepared.sidecar) == []
+
+def test_legacy_doc_marked_for_archive(tmp_path):
+    src = tmp_path / "[Luật] old.doc"; src.write_bytes(b"ole-junk")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.sidecar["sourceFormat"] == "docx"   # legacy .doc -> docx enum
+    assert prepared.normalized is False                 # not a re-raster
+    assert prepared.archive_original is True            # source preserved, not deleted
+
+def test_legacy_ppt_marked_for_archive(tmp_path):
+    src = tmp_path / "[Môn] deck.ppt"; src.write_bytes(b"ole-junk")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.archive_original is True
+
+def test_docx_not_archived(make_docx, tmp_path):
+    src = make_docx("[Luật X] luat.docx", ["Điều 1. Phạm vi điều chỉnh"])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.archive_original is False           # OOXML source deleted as before
 
 def _jpeg(path, w, h):
     import fitz
@@ -75,6 +93,7 @@ def test_image_becomes_single_page_pdf_sidecar(tmp_path):
     src = _jpeg(tmp_path / "[Môn] photo.jpg", 700, 1000)     # portrait, light
     prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
     assert prepared.normalized is False                     # image source not archived
+    assert prepared.archive_original is False               # consumed source -> deleted
     assert prepared.sidecar["sourceFormat"] == "pdf"
     assert prepared.sidecar["pageCount"] == 1
     assert prepared.sidecar["units"] and IMAGE_PAGE_MARKER in prepared.sidecar["units"][0]["text"]

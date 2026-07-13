@@ -27,6 +27,10 @@ class Prepared:
     clean_name: str
     normalized: bool = False  # True when the kho copy is a re-rastered version
                               # of `src` (the original must be archived, not deleted)
+    archive_original: bool = False  # True when scan must keep `src` in <kho>_archive
+                                    # instead of deleting it (heavy re-raster, or a
+                                    # legacy .doc/.ppt whose OOXML structure degraded
+                                    # through LibreOffice and is worth re-extracting)
 
 def _now_iso() -> str:
     return datetime.now(VN_TZ).isoformat(timespec="seconds")
@@ -53,6 +57,8 @@ def process_one_file(
     source_format = SOURCE_FORMAT[ext]
 
     normalized = False
+    legacy_ole = ext in (".doc", ".ppt")  # OLE original -> converted via LibreOffice;
+                                          # structure degrades, so preserve the source
     if ext == ".pdf":
         canonical_pdf = src
         extraction = read_pdf(src)
@@ -103,4 +109,5 @@ def process_one_file(
         subject=parsed.subject,
         clean_name=parsed.clean_name,
         normalized=normalized,
+        archive_original=normalized or legacy_ole,
     )

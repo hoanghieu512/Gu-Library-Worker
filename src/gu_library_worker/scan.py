@@ -76,15 +76,17 @@ def scan_once(paths: Paths, *, convert_fn: Callable[..., Path] = default_convert
                 subject_dir = paths.subject_dir(prepared.subject)
                 pdf_dst, json_dst = resolve_target_stems(
                     subject_dir, prepared.clean_name, reservations)
-                if prepared.normalized:
-                    # archive the heavy original OUT of the kho (not synced) before
-                    # publishing the normalized copy; move -> entry leaves _inbox,
-                    # so write_pair's delete becomes a no-op.
+                if prepared.archive_original:
+                    # preserve the original OUT of the kho (sibling _archive, not
+                    # synced) before publishing: heavy re-raster keeps the sharp
+                    # source, legacy .doc/.ppt keeps the OOXML for later re-extract.
+                    # move -> entry leaves _inbox, so write_pair's delete is a no-op.
+                    # dedup_name guards against clobbering an existing archived copy.
                     paths.archive_dir.mkdir(parents=True, exist_ok=True)
                     archived = paths.archive_dir / dedup_name(
                         paths.archive_dir, entry.name, claimed_inbox)
                     shutil.move(str(entry), str(archived))
-                    log.info("normalized heavy scan; archived original -> %s", archived)
+                    log.info("archived original source -> %s", archived)
                 write_pair(prepared.canonical_pdf, prepared.sidecar,
                            pdf_dst, json_dst, entry)
             report.processed += 1

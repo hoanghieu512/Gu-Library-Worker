@@ -227,6 +227,40 @@ def test_unsafe_nested_prefix_goes_to_unclassified_not_stuck(make_pdf, tmp_path)
     assert not (tmp_path.parent / "evil.pdf").exists()            # never escaped kho
     assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())
 
+def test_legacy_doc_original_archived_not_deleted(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    (inbox / "[Luật] old.doc").write_bytes(b"ole-junk")
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1
+    subject = tmp_path / "Luật"
+    assert (subject / "old.pdf").exists() and (subject / "old.json").exists()  # filed as before
+    assert not any(p.suffix == ".doc" for p in inbox.iterdir())      # left the inbox
+    archived = list(paths.archive_dir.glob("*.doc"))
+    assert [p.name for p in archived] == ["[Luật] old.doc"]          # preserved, prefix kept
+    assert paths.archive_dir.name.endswith("_archive")               # sibling, out of Syncthing
+
+def test_legacy_ppt_original_archived(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    (inbox / "[Môn] deck.ppt").write_bytes(b"ole-junk")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert [p.name for p in paths.archive_dir.glob("*.ppt")] == ["[Môn] deck.ppt"]
+
+def test_docx_original_not_archived(make_docx, tmp_path):
+    paths, inbox = _kho(tmp_path)
+    make_docx("law.docx", ["Điều 1. Phạm vi"]).rename(inbox / "[Luật] law.docx")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert not paths.archive_dir.exists() or not list(paths.archive_dir.glob("*.docx"))
+
+def test_archive_does_not_overwrite_duplicate(tmp_path):
+    paths, inbox = _kho(tmp_path)
+    paths.archive_dir.mkdir(parents=True, exist_ok=True)
+    (paths.archive_dir / "[Luật] old.doc").write_bytes(b"first")     # pre-existing archive copy
+    (inbox / "[Luật] old.doc").write_bytes(b"second")
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    names = sorted(p.name for p in paths.archive_dir.glob("*.doc"))
+    assert names == ["[Luật] old (1).doc", "[Luật] old.doc"]         # suffixed, no clobber
+    assert (paths.archive_dir / "[Luật] old.doc").read_bytes() == b"first"  # old one intact
+
 def test_image_filed_as_pdf_source_consumed_not_archived(tmp_path):
     import fitz
     paths, inbox = _kho(tmp_path)
