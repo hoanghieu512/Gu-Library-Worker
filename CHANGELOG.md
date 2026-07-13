@@ -5,6 +5,14 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.12.0] — 2026-07-13 — Beat A: đóng ảnh thành PDF một trang
+### Added
+- **Nhận file ảnh trong `_inbox/`** (`.jpg/.jpeg/.png/.webp/.gif/.bmp/.tif/.tiff`): mỗi ảnh → **một PDF 1 trang riêng**, khổ trang = tỉ lệ ảnh (ảnh ngang → trang NGANG, không ép dọc, không méo). Mỗi ảnh là một tài liệu độc lập — KHÔNG bao giờ gộp nhiều ảnh. `images.image_to_single_page_pdf` (cạnh dài = 842pt/A4, nhúng JPEG giữ nguyên bytes → không re-encode, giữ nét); nhánh ảnh cắm ở `process_one_file` giữa `.pdf` và `.docx/.pptx`, rồi đi tiếp pipeline sidecar/tiền tố/đặt vào môn như thường.
+- **Ảnh không có text → sidecar hợp lệ nhưng rỗng text** (tái dùng nhánh zero-text: `IMAGE_PAGE_MARKER`, không OCR, không kẹt). Ảnh nặng cho điện thoại → tái dùng chuẩn hóa scan (150dpi JPEG) để nhẹ.
+- **Ảnh gốc = nguồn đã tiêu thụ** (pixel đã nằm trong PDF, Gú giữ bản trên điện thoại) → **xóa, KHÔNG archive** như scan re-raster (`Prepared.normalized` cố ý giữ `False` ở nhánh ảnh dù có chuẩn hóa nội bộ).
+### Notes
+- File không phải ảnh / không hợp lệ để yên như cũ (không regression). `insert_image` xác nhận lossless (probe 1600→1600, 3000→3000). 155 pass / 1 skip (+8 test ảnh: `test_images.py`, pipeline, scan; `test_constants_shapes` cập nhật do hợp đồng extension đổi theo tính năng).
+
 ## [0.11.0] — 2026-07-03 — Hạ tầng Prod: `_print/` → Drive + backup tuần offsite
 ### Added
 - **Hai Scheduled Task Prod riêng, độc lập với `GuLibraryWorker` (rclone headless, chạy-rồi-thoát):** `GuLibraryPrintSync` (mỗi ~15 phút, `rclone sync` `_print/` → `gdrive:GuLibrary/Di-in` — mirror, tick "Xong" là file rời cả Drive) và `GuLibraryBackup` (CN 03:00 — robocopy snapshot theo ngày `…\backup\YYYY-MM-DD\` loại `.stversions`, giữ 4 bản mới nhất, rồi `rclone sync` lên `gdrive:GuLibrary/Backup`). `scripts/sync-print.ps1`, `scripts/backup.ps1` (`-SkipDrive` = snapshot local), `scripts/register-ops-tasks.ps1`.

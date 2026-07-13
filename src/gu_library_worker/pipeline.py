@@ -5,7 +5,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Callable
 
-from .config import SOURCE_FORMAT
+from .config import SOURCE_FORMAT, IMAGE_EXTENSIONS
+from .images import image_to_single_page_pdf
 from .prefix import parse_prefix
 from .schema import Document, to_sidecar
 from .readers.base import Extraction
@@ -64,6 +65,20 @@ def process_one_file(
             canonical_pdf = normalized_pdf
             extraction = read_pdf(canonical_pdf)   # sidecar matches the kho copy
             normalized = True
+    elif ext in IMAGE_EXTENSIONS:
+        # One image -> one-page PDF (page aspect = image aspect), then the same
+        # zero-text + heavy-scan path as a scanned PDF. The source image is a
+        # consumed input (Gú keeps the phone copy), so `normalized` stays False:
+        # the original is deleted, NOT archived like a re-rastered scan.
+        built = tmp_workdir / (src.stem + "_img.pdf")
+        image_to_single_page_pdf(src, built)
+        canonical_pdf = built
+        extraction = read_pdf(built)               # zero-text -> image_pdf sidecar
+        if extraction.image_pdf and is_heavy_scan(built):
+            light = tmp_workdir / (src.stem + "_img_light.pdf")
+            normalize_pdf(built, light)
+            canonical_pdf = light
+            extraction = read_pdf(light)
     elif ext in (".docx", ".pptx"):
         canonical_pdf = convert_fn(src, tmp_workdir)
         extraction = _read(src, ext)

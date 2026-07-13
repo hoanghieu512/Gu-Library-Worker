@@ -227,6 +227,27 @@ def test_unsafe_nested_prefix_goes_to_unclassified_not_stuck(make_pdf, tmp_path)
     assert not (tmp_path.parent / "evil.pdf").exists()            # never escaped kho
     assert not any(p.name.endswith(".pdf") for p in inbox.iterdir())
 
+def test_image_filed_as_pdf_source_consumed_not_archived(tmp_path):
+    import fitz
+    paths, inbox = _kho(tmp_path)
+    pm = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 800, 1100)); pm.set_rect(pm.irect, (210, 190, 170))
+    (inbox / "[Tố tụng Hình sự] baibao.jpg").write_bytes(pm.tobytes("jpeg", jpg_quality=88))
+    report = scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    assert report.processed == 1 and report.failed == 0
+    subject = tmp_path / "Tố tụng Hình sự"
+    assert (subject / "baibao.pdf").exists() and (subject / "baibao.json").exists()  # -> PDF pair
+    assert not any(p.suffix == ".jpg" for p in inbox.iterdir())     # source consumed
+    assert not paths.archive_dir.exists() or not list(paths.archive_dir.glob("*"))  # NOT archived
+
+def test_landscape_image_filed_landscape(tmp_path):
+    import fitz
+    paths, inbox = _kho(tmp_path)
+    pm = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 1600, 900)); pm.set_rect(pm.irect, (200, 180, 160))
+    (inbox / "[Môn] trangdoi.jpg").write_bytes(pm.tobytes("jpeg", jpg_quality=88))
+    scan_once(paths, convert_fn=_convert, sleep=lambda s: None)
+    with fitz.open(tmp_path / "Môn" / "trangdoi.pdf") as d:
+        assert d[0].rect.width > d[0].rect.height
+
 def _heavy_scan_inbox(inbox, name, pages=2, img_w=500):
     import fitz
     p = inbox / name

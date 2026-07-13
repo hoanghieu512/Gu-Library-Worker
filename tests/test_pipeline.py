@@ -64,6 +64,42 @@ def test_heavy_image_pdf_is_normalized(tmp_path):
     assert prepared.sidecar["pageCount"] == 2                  # sidecar matches kho copy
     assert validate_sidecar(prepared.sidecar) == []
 
+def _jpeg(path, w, h):
+    import fitz
+    pm = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, w, h)); pm.set_rect(pm.irect, (210, 190, 170))
+    path.write_bytes(pm.tobytes("jpeg", jpg_quality=88)); return path
+
+def test_image_becomes_single_page_pdf_sidecar(tmp_path):
+    from gu_library_worker.readers.pdf_reader import IMAGE_PAGE_MARKER
+    import fitz
+    src = _jpeg(tmp_path / "[Môn] photo.jpg", 700, 1000)     # portrait, light
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.normalized is False                     # image source not archived
+    assert prepared.sidecar["sourceFormat"] == "pdf"
+    assert prepared.sidecar["pageCount"] == 1
+    assert prepared.sidecar["units"] and IMAGE_PAGE_MARKER in prepared.sidecar["units"][0]["text"]
+    assert validate_sidecar(prepared.sidecar) == []
+    with fitz.open(prepared.canonical_pdf) as d:
+        assert d[0].rect.height > d[0].rect.width           # portrait page
+
+def test_landscape_image_gives_landscape_pdf(tmp_path):
+    import fitz
+    src = _jpeg(tmp_path / "[Môn] wide.jpg", 1600, 900)      # double-page / landscape
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    with fitz.open(prepared.canonical_pdf) as d:
+        assert d[0].rect.width > d[0].rect.height           # NOT forced portrait
+
+def test_heavy_image_lightened(tmp_path):
+    import fitz
+    src = _jpeg(tmp_path / "[Môn] big.jpg", 2600, 1700)      # high-res -> heavy
+    src_w = 2600
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    with fitz.open(prepared.canonical_pdf) as d:
+        embedded_w = d[0].get_images(full=True)[0][2]
+    assert embedded_w < src_w                               # re-rastered lighter (150dpi)
+    assert prepared.normalized is False                     # still not archived (image)
+    assert prepared.sidecar["pageCount"] == 1
+
 def test_light_scan_pdf_passthrough(tmp_path):
     # a zero-text scan that is already low-res -> not heavy -> not re-rastered
     src = _heavy_scan(tmp_path / "[Môn] light.pdf", pages=1, img_w=150)   # ~72 dpi
