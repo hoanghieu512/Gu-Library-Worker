@@ -125,3 +125,151 @@ def test_light_scan_pdf_passthrough(tmp_path):
     prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
     assert prepared.normalized is False
     assert prepared.canonical_pdf == src                       # untouched
+
+
+def _render_pdf(out, pages):
+    """Render real (Unicode-safe) text pages, the way LibreOffice would."""
+    import html as html_mod
+    import fitz
+    mb = fitz.paper_rect("a4")
+    writer = fitz.DocumentWriter(str(out))
+    for body in pages:
+        story = fitz.Story(html=f"<p>{html_mod.escape(body)}</p>")
+        dev = writer.begin_page(mb)
+        story.place(mb + (36, 36, -36, -36))
+        story.draw(dev, None)
+        writer.end_page()
+    writer.close()
+    return out
+
+
+def _convert_to_prose_pages(src, outdir, **kw):
+    """Stand-in for LibreOffice rendering a deck: plain text, one block per page."""
+    return _render_pdf(outdir / (src.stem + ".pdf"),
+                       ["Mở đầu bài giảng", "Nội dung chính", "Tổng kết"])
+
+
+def _convert_to_legal_pages(src, outdir, **kw):
+    """Stand-in for a deck that quotes law: the PDF reader finds Điều/Khoản."""
+    return _render_pdf(outdir / (src.stem + ".pdf"), [
+        "Điều 1. Phạm vi điều chỉnh\nLuật này quy định về tội phạm.",
+        "Điều 2. Giải thích từ ngữ\nTrong Luật này, các từ ngữ dưới đây được hiểu như sau.",
+    ])
+
+
+def test_legacy_ppt_gets_slide_structure_not_bare_paragraphs(tmp_path):
+    """v0.14.0: a .ppt no longer lands in the kho as unlabelled text blocks."""
+    src = tmp_path / "[Hình sự][Slide] bai 1.ppt"
+    src.write_bytes(b"fake ole")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w",
+                                convert_fn=_convert_to_prose_pages)
+    sidecar = prepared.sidecar
+    assert sidecar["sourceFormat"] == "pptx"
+    assert sidecar["kind"] == "slide"
+    assert [u["type"] for u in sidecar["units"]] == ["slide"] * 3
+    assert [u["label"] for u in sidecar["units"]] == ["Slide 1", "Slide 2", "Slide 3"]
+    assert [u["page"] for u in sidecar["units"]] == [1, 2, 3]
+    assert validate_sidecar(sidecar) == []
+    assert prepared.archive_original is True  # source still preserved
+
+
+def test_legacy_ppt_that_parses_as_law_keeps_its_legal_units(tmp_path):
+    """A deck quoting law has better structure than slides — don't flatten it."""
+    src = tmp_path / "[Hình sự][Slide] blhs.ppt"
+    src.write_bytes(b"fake ole")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w",
+                                convert_fn=_convert_to_legal_pages)
+    assert prepared.sidecar["kind"] == "legal"
+    assert prepared.sidecar["units"][0]["type"] == "dieu"
+
+
+def test_legacy_doc_is_untouched_by_the_slide_repair(tmp_path):
+    src = tmp_path / "[Hình sự][VBPL] luat.doc"
+    src.write_bytes(b"fake ole")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w",
+                                convert_fn=_convert_to_prose_pages)
+    assert prepared.sidecar["sourceFormat"] == "docx"
+    assert prepared.sidecar["kind"] == "prose"  # prose stays prose for .doc
+
+
+def _convert_to_vni_pages(src, outdir, **kw):
+    """Stand-in for a deck typed in a VNI-Times font: the PDF holds raw VNI bytes."""
+    return _render_pdf(outdir / (src.stem + ".pdf"), [
+        "CHÖÔNG XV: MIEÃN, GIAÛM TRAÙCH NHIEÄM HÌNH SÖÏ",
+        "Khaùi nieäm vaø yù nghóa cuûa QÑHP",
+    ])
+
+
+def test_legacy_ppt_in_a_vni_font_lands_as_unicode(tmp_path):
+    """v0.15.0: raw VNI bytes would be unsearchable — decode at extraction."""
+    src = tmp_path / "[Hình sự][Slide] bai 15.ppt"
+    src.write_bytes(b"fake ole")
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w",
+                                convert_fn=_convert_to_vni_pages)
+    texts = [u["text"] for u in prepared.sidecar["units"]]
+    assert texts == ["CHƯƠNG XV: MIỄN, GIẢM TRÁCH NHIỆM HÌNH SỰ",
+                     "Khái niệm và ý nghĩa của QĐHP"]
+    assert prepared.sidecar["kind"] == "slide"
+    assert validate_sidecar(prepared.sidecar) == []
+
+
+def test_pdf_text_is_normalized_too(make_pdf, tmp_path):
+    """v0.16.0: normalization is not a .doc/.ppt speciality. A PDF whose tone
+    marks arrive as separate combining characters would be unsearchable."""
+    import unicodedata
+    src = make_pdf("[Môn] vb.pdf", [unicodedata.normalize("NFD", "Bổ sung tội danh")])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    joined = "\n".join(u["text"] for u in prepared.sidecar["units"])
+    assert "Bổ sung tội danh" in unicodedata.normalize("NFC", joined)
+    assert joined == unicodedata.normalize("NFC", joined)
+
+
+def test_pptx_text_is_normalized_too(make_pptx, tmp_path):
+    """A .pptx (not just legacy .ppt) can carry VNI text pasted in from an old
+    deck; it must not sail past unconverted."""
+    src = make_pptx("[Môn] deck.pptx", ["Khaùi nieäm vaø yù nghóa cuûa QÑHP"])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.sidecar["units"][0]["text"] == "Khái niệm và ý nghĩa của QĐHP"
+
+
+def test_docx_text_is_normalized_too(make_docx, tmp_path):
+    src = make_docx("[Môn] bai.docx", ["Ñoái töôïng ñieàu chænh"])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    joined = "\n".join(u["text"] for u in prepared.sidecar["units"])
+    assert "Đối tượng điều chỉnh" in joined
+
+
+def test_image_pdf_marker_survives_normalization(tmp_path):
+    """The scanned-page marker is what Phase 2 OCR looks for — it must come out
+    byte-identical."""
+    from gu_library_worker.readers.pdf_reader import IMAGE_PAGE_MARKER
+    src = _heavy_scan(tmp_path / "[Môn] scan.pdf", pages=1, img_w=150)
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert IMAGE_PAGE_MARKER in prepared.sidecar["units"][0]["text"]
+
+
+def test_pdf_in_a_vni_font_is_decoded_too(make_pdf, tmp_path):
+    """The VNI half of normalization is not a .ppt speciality either: a plain
+    PDF whose text was typed in a VNI-Times font must land searchable."""
+    src = make_pdf("[Môn] bai.pdf", [
+        "Khaùi nieäm vaø yù nghóa cuûa QÑHP",
+        "Ñoái töôïng ñieàu chænh cuûa luaät hình söï",
+    ])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    joined = "\n".join(u["text"] for u in prepared.sidecar["units"])
+    assert "Khái niệm và ý nghĩa của QĐHP" in joined
+    assert "Đối tượng điều chỉnh của luật hình sự" in joined
+    assert validate_sidecar(prepared.sidecar) == []
+
+
+def test_a_vni_law_pdf_keeps_its_legal_structure(make_pdf, tmp_path):
+    """Decoding happens after parsing, so it cannot disturb Điều/Khoản units —
+    but a VNI-encoded law never parsed as legal in the first place."""
+    src = make_pdf("[Môn] luat.pdf", [
+        "Điều 1. Phạm vi điều chỉnh",
+        "Luaät naøy quy ñònh veà toäi phaïm.",
+    ])
+    prepared = process_one_file(src, tmp_workdir=tmp_path / "w", convert_fn=_fake_convert)
+    assert prepared.sidecar["kind"] == "legal"
+    joined = "\n".join(u["text"] for u in prepared.sidecar["units"])
+    assert "Luật này quy định về tội phạm." in joined

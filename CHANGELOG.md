@@ -5,6 +5,37 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.16.0] — 2026-09-06 — Chuẩn hóa text ở MỌI đường vào (không chỉ `.doc`/`.ppt`)
+### Fixed
+- **Chuẩn hóa text giờ áp cho mọi định dạng nguồn, không riêng `.doc`/`.ppt`.** v0.15.0 cắm chuyển-VNI trong nhánh OLE cũ, nên tài liệu `.pdf`/`.docx`/`.pptx` mang cùng lỗi vẫn lọt — **và đó là phần lớn**: 26 tài liệu Prod dính lỗi dấu-tách-rời gồm 12 pdf, 8 pptx, 6 docx, còn đoạn VNI trong `GIÁO TRÌNH HSPC` cũng là nguồn `pdf`. Nay một lượt `normalize_text` chạy **sau mọi nhánh reader và sau khi neo trang** (`anchor_pages` không bị ảnh hưởng), trước khi dựng `Document`. Với `.ppt` thì chạy sau khi gom slide → phạm vi rộng hơn, bắt được nhiều từ VNI hơn. No-op với text đã sạch; `IMAGE_PAGE_MARKER` ổn định qua NFC (có test).
+### Added
+- **Chuẩn hóa NFC: gộp dấu tiếng Việt bị tách rời** (`i` + dấu sắc tổ hợp → `í`). Trông y hệt trên màn hình nhưng **không truy vấn nào khớp được** — cùng loại lỗi "cấu trúc đẹp mà vẫn không tìm ra" như VNI. `vnifix` nay nhắm theo **kết quả** (`needs_text_fix`: normalize có làm text đổi không) thay vì chỉ theo dấu hiệu VNI, nên tài liệu chỉ lỗi NFC không bị bỏ sót. Quy tắc chuyển VNI **không nới lỏng chút nào**.
+### Notes
+- Đã chạy trên **Prod: 26 tài liệu, 2.381 unit**. Nặng nhất là các bộ luật: `3. HỢP NHẤT_BLHS 2015…` 940/1674 unit, `0. VBHN BLHS 2015` 938/1627, `8. TỌA ĐÀM TƯ PHÁP NGƯỜI CTN` 103/1157. Kiểm mẫu xác nhận thay đổi **thuần NFC** (`NFC(cũ) == mới`, số unit đổi do VNI = 0). Verify 26/26: `page`/`bbox`/`label`/metadata/số-từ giữ nguyên, `validate_sidecar` sạch, 113/113 sidecar Prod hợp lệ, chạy lại ra `targets=0`. 281 pass / 5 skip (+8 test).
+- Trả lời câu "sau này thêm tài liệu có tự sửa không": **có, từ bản này** — cả VNI lẫn NFC đều được xử ngay lúc worker nuốt file, mọi định dạng. `vnifix` từ nay chỉ còn là công cụ vá-ngược cho tài liệu đã nằm sẵn trong kho.
+
+## [0.15.0] — 2026-09-06 — Chuyển text font cũ VNI-Times → Unicode
+### Added
+- **`gu_library_worker.vni` — bảng chuyển VNI-Times → Unicode.** Slide/giáo trình soạn trước thời Unicode lưu tiếng Việt thành chữ ASCII trong font VNI-Times: *byte* là `CHÖÔNG XV — MIEÃN, GIAÛM`, chỉ có font làm nó trông đúng. LibreOffice thay font khi convert nên byte thô rơi thẳng vào sidecar → gõ "miễn giảm" không bao giờ khớp. Bảng chuyển đầy đủ: cặp `nguyên âm + dấu` (`aù`=á, `eä`=ệ) + các chữ đứng một mình (`ñ`=đ, `ö`=ư, `ô`=ơ, `æ`=ỉ, `ò`=ị, `ó`=ĩ). Kèm chuẩn hóa NFC (gộp dấu bị tách rời khi trích PDF).
+- **`vnifix` — công cụ chạy tay** (`python -m gu_library_worker.vnifix --kho <kho> [--apply]`, mặc định DRY-RUN). **Chỉ `text` đổi**; `page`, `label`, `bbox`, `path` và metadata bê nguyên → neo trang không thể xê dịch. Từ chối ghi nếu conversion làm rỗng unit, đổi số từ, đổi danh sách `page`, hoặc `validate_sidecar` bẩn. Sidecar cũ copy sang `<kho>_archive/_sidecar_backup_vni/` (tách khỏi `_sidecar_backup/` của reslide), ghi atomic.
+### Changed
+- **Pipeline: `.doc`/`.ppt` mới vào `_inbox/` được chuyển VNI ngay lúc extract** — no-op với text đã Unicode, nên không tái tạo nợ.
+### Notes
+- **Quy tắc an toàn là phần khó nhất, và dữ liệu thật đã bác hai phiên bản đầu.** (1) "Nguyên âm + dấu" KHÔNG phải bằng chứng: `oà`/`oá` là tiếng Việt Unicode bình thường (dấu rơi vào nguyên âm thứ hai của cụm) — quy tắc đó biến `Toà án`→`Tồ án`, `hoàn thiện`→`hồn thiện`, `Nguyễn Ngọc Hoà`→`Nguyễn Ngọc Hồ`, `Hoàng`→`Hồng` trên 4 tài liệu thật. (2) Ký tự `ö ä ü ñ` cũng KHÔNG phải bằng chứng: kho có trích dẫn tiếng Đức/Tây Ban Nha — quy tắc đó biến `öffentliches`→`ưffentliches`, `Acuña`→`Acuđa`. **Bằng chứng chốt lại = dấu riêng của VNI (`ø û ï ä å ë ü`) đứng NGAY SAU một nguyên âm** — thứ mà cả tiếng Việt Unicode lẫn ngôn ngữ khác đều không sinh ra. Cả hai ca đều bị chặn ở dry-run, chưa ghi ra đĩa.
+- Phạm vi thu hẹp theo bằng chứng: khối → dòng → từ, chỉ hẹp lại khi một khối lẫn cả hai bảng mã. Giá phải trả: từ VNI đứng lẻ không có dấu riêng (`Phaàn`, `caàn thieát`) thì giữ nguyên thay vì đoán.
+- Đã chạy thật trên **Prod: 7 tài liệu, 224 unit** (6 slide deck tổ HS + 1 đoạn trong giáo trình HSPC). QA không có ca nào ngoài cùng 1 đoạn giáo trình đó. Verify ngược với backup: `page`/`bbox`/`label`/metadata/số-từ **giữ nguyên tuyệt đối 7/7**, `validate_sidecar` sạch. 20 unit còn sót ký tự VNI — là mảnh chữ **PDF trích ra đã vỡ sẵn từ trước** (dấu bị tách khỏi nguyên âm bởi xuống dòng), không bảng chuyển nào cứu được; báo số ra thay vì giấu. 266 pass / 5 skip (+80 test).
+
+## [0.14.0] — 2026-09-05 — Trả nợ Phase 2: dựng lại cấu trúc slide cho nguồn `.ppt` cũ
+### Added
+- **`reslide` — công cụ chạy tay dựng lại cấu trúc slide trong sidecar đã degrade** (`python -m gu_library_worker.reslide --kho <kho> [--apply]`, mặc định DRY-RUN, `--kho` lặp được, quét tuần tự một tiến trình như pass scan). Sidecar sinh từ `.ppt` (OLE cũ) vốn là một đống `paragraph` không nhãn; công cụ **gom lại theo `page`** thành một unit `slide` mỗi trang, `label` = `"Slide N"`, `kind` = `slide`.
+- **`page` bê nguyên từ unit cũ, không bao giờ tính lại** — nên neo trang chính xác y như trước, và **PDF canonical trong kho không hề bị đụng/convert lại** (app v1.38.0 đã dùng `page` để nhảy trang). Kiểm an toàn trước khi ghi: page ⊆ page cũ, `page ≤ pageCount`, `validate_sidecar` sạch; hỏng bất kỳ điều kiện nào → **bỏ qua, giữ sidecar degrade** (`skipped_unsafe`), không đoán.
+- Sidecar cũ được **copy sang `<kho>_archive/_sidecar_backup/<đường dẫn tương đối>`** trước khi ghi đè; ghi kiểu atomic (`.tmp` → `replace`) để Syncthing không bao giờ bắt được file nửa vời.
+### Changed
+- **Pipeline: `.ppt` mới vào `_inbox/` giờ ra thẳng cấu trúc slide**, không còn degrade — cùng phép gom theo trang, trên đúng page mà PDF reader vừa sinh. `.doc` không đụng (thực đo: hai bộ luật `.doc` vẫn parse ra `legal` đầy đủ 1717/912 unit). Deck nào parse ra `kind: "legal"` cũng **không** đụng — Điều/Khoản là cấu trúc tốt hơn slide.
+### Notes
+- **Không cần tới `kho_archive`.** Cách này đọc lại từ sidecar sẵn có nên vá được cả tài liệu đã mất nguồn (xử lý trước v0.13.0, hồi đó còn xóa gốc) — thực tế Prod có 9 ca như vậy mà đường "re-extract từ archive" chịu thua.
+- Đã chạy thật: **QA 7 tài liệu (140 unit), Prod 12 tài liệu (375 unit)**. Verify ngược trên chính PDF trong kho: **515/515 unit có text nằm đúng trang nó trỏ tới**, không mất chữ so với bản backup, `validate_sidecar` sạch, chạy lại lần hai ra `targets=0` (idempotent). 187 pass / 1 skip (+25 test).
+
 ## [0.13.0] — 2026-07-13 — Beat B: archive gốc `.doc`/`.ppt` thay vì xóa
 ### Changed
 - **Nhánh `.doc`/`.ppt` (OLE cũ) giờ CẤT gốc vào `<kho>_archive/` thay vì xóa.** Các định dạng này đi qua LibreOffice→PDF rồi extract từ PDF nên sidecar degrade về `paragraph` (mất Điều/Khoản/slide); giữ nguồn OOXML để phase 2 re-extract cấu trúc khi làm search. Tái dùng đúng khu archive sẵn có (sibling ngoài Syncthing), giữ tên gốc kèm tiền tố như archive scan; trùng tên → suffix `(n)` (dedup chống-đè), không đè bản cũ.

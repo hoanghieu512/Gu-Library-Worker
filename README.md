@@ -1,12 +1,12 @@
 # gu-library-worker
 
-Mini-PC worker for Gú's Library: polls `kho/_inbox/`, converts originals to PDF,
+Atomman worker for Gú's Library: polls `kho/_inbox/`, converts originals to PDF,
 extracts a schema-v1 sidecar JSON, and files the pair into the subject folder.
 
 See `Docs/superpowers/plans/2026-06-21-gu-library-m7-worker.md` and
 `Docs/gu-library-sidecar-schema.md`.
 
-## Running on the mini PC
+## Running on the Atomman
 
 One pass manually (LibreOffice is auto-detected — no `--soffice` needed):
 
@@ -53,7 +53,7 @@ label (its parent folder, e.g. `[GuLibrary-Prod]`) — so Prod and test stay cle
 separated even though one process serves both.
 
 It lives at the kho root, so Syncthing will replicate it. To keep it local to the
-mini PC, add a `.stignore` at the kho root containing:
+Atomman, add a `.stignore` at the kho root containing:
 
     _worker.log
     _worker.log.*
@@ -78,6 +78,72 @@ delay the other kho's scan by up to that one pass — it self-heals on the next
 3-minute run. This is intentional (no parallel LibreOffice); the loop
 architecture is unchanged.
 
+## Rebuilding slide structure: `reslide` (manual, one-off)
+
+A legacy `.ppt` can't be read by python-pptx, so the pipeline converts it and
+extracts from the PDF — which used to land in the kho as unlabelled `paragraph`
+blocks. Since v0.14.0 new `.ppt` files get slide structure straight away; this
+tool repairs the ones already in the kho.
+
+    python -m gu_library_worker.reslide --kho "D:\GuLibrary\kho" --kho "D:\GuLibrary-Prod\kho"
+    python -m gu_library_worker.reslide --kho "D:\GuLibrary\kho" --apply
+
+It **reports only unless `--apply` is given**. Repair merges the units the
+sidecar already has, grouped by `page`, into one `slide` unit per page labelled
+`Slide N`. `page` is copied verbatim and **the PDF in the kho is never touched
+or re-converted**, so the page anchors the app jumps to stay exactly as accurate
+as they were. A sidecar that fails any safety check (a page beyond `pageCount`,
+an invalid result) is **left degraded rather than rewritten** — a page jump that
+lands correctly beats structure that lands on the wrong page.
+
+The previous sidecar is copied to `<kho>_archive/_sidecar_backup/<relative path>`
+before anything is overwritten, and the new one is written atomically so
+Syncthing never picks up a half-written file. Re-running is a no-op.
+
+Overwriting a sidecar makes every Android device re-index that file — by design,
+but worth doing in batches if you ever have hundreds to repair.
+
+## Text search can't match: normalized on the way in, `vnifix` for the backlog
+
+Two things make sidecar text unmatchable while leaving it looking perfectly
+normal on screen:
+
+- **Legacy VNI-Times encoding.** Material written before Unicode stored
+  Vietnamese as ASCII letters in a VNI-Times font: the bytes say
+  `CHÖÔNG XV — MIEÃN, GIAÛM`, and only the font made them look right. LibreOffice
+  substitutes a normal font, so those bytes land in the sidecar and nobody
+  searching for `miễn giảm` can ever match them.
+- **Decomposed tone marks.** `i` followed by a combining acute instead of `í`.
+  Identical on screen, equal to no query anyone will type.
+
+Since v0.16.0 the pipeline fixes both **for every source format** on the way in —
+after each reader and after page anchoring — so newly added documents need no
+repair. (v0.15.0 hooked it into the `.doc`/`.ppt` branch only, which missed the
+PDF, docx and pptx files that turned out to be most of them.) This tool is the
+retrofit for what is already in the kho.
+
+    python -m gu_library_worker.vnifix --kho "D:\GuLibrary-Prod\kho"
+    python -m gu_library_worker.vnifix --kho "D:\GuLibrary-Prod\kho" --apply
+
+It **reports only unless `--apply` is given**. Only `text` changes — `page`,
+`bbox`, `label`, `path` and the document metadata are carried across untouched,
+so page anchors cannot move. A conversion that would empty a unit, change a
+unit's word count, move a page, or produce an invalid sidecar is refused and the
+document left alone. The previous sidecar is copied to
+`<kho>_archive/_sidecar_backup_vni/` — deliberately *not* `_sidecar_backup/`,
+which holds `reslide`'s pre-slide originals. Re-running is a no-op.
+
+**Deciding what is VNI is the hard part, and two obvious rules are both wrong.**
+A vowel followed by a tone mark (`aù`) looks like proof, but Vietnamese Unicode
+writes `hoà`, `toà`, `hoá`, `Hoàng` exactly that way — the tone landing on the
+second vowel of a cluster — so that rule turns `Toà án` into `Tồ án`. The
+characters `ö ä ü ñ` look exclusive to VNI, but they are everyday German, Nordic
+and Spanish letters, and a kho holding foreign citations turns `öffentliches`
+into `ưffentliches`. Proof is the two together: **a VNI-exclusive modifier
+immediately after a vowel**, which nothing else produces. Text that only *might*
+be VNI is left as it is, so a few real VNI words with no exclusive character of
+their own (`Phaàn`) survive unconverted — the price of never mangling a `Toà`.
+
 ## Prod ops: Drive print queue + weekly backup (rclone)
 
 Two Scheduled Tasks, **Prod only**, independent of `GuLibraryWorker`:
@@ -96,7 +162,7 @@ On a network/Drive error they log and exit; the next scheduled run retries (no
 in-place retry loop, no popup). Tasks run **whether logged on or not** (S4U), so
 they survive a reboot with no logon and run headless (no window).
 
-### One-time manual setup (Gú, on the mini PC)
+### One-time manual setup (Gú, on the Atomman)
 
 1. **Install rclone** (https://rclone.org/downloads/) and put `rclone.exe` on PATH.
 2. **Configure the Google Drive remote** (opens a browser once for OAuth):

@@ -1,6 +1,6 @@
 # Gú's Library — Ghi chú vận hành QA / Prod
 
-*Cập nhật 2026-07-13, trạng thái: app v1.17.0 · worker v0.13.0. **Bản hợp nhất** —
+*Cập nhật 2026-09-06, trạng thái: app v1.38.0 · worker v0.16.0. **Bản hợp nhất** —
 nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn Obsidian. File này
 dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
@@ -20,14 +20,14 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 
 | | QA | Prod |
 |---|---|---|
-| Folder trên mini PC | `D:\GuLibrary\kho` | `D:\GuLibrary-Prod\kho` |
+| Folder trên Atomman | `D:\GuLibrary\kho` | `D:\GuLibrary-Prod\kho` |
 | Folder-ID Syncthing | `gu-library-kho` | `gu-library-kho-prod` |
 | Máy trong cụm | Z Flip 4 · S22 Ultra · Z Fold 3 (máy test) | Galaxy Tab S9 (SM-X710) · S20 FE · Z Flip 6 (máy Gú) |
-| Archive chuẩn hóa (v0.10.0) | sibling ngoài cây sync | sibling ngoài cây sync |
+| Archive nguồn + backup sidecar | sibling ngoài cây sync (`…_archive\`, chi tiết §3) | sibling ngoài cây sync (`…_archive\`, chi tiết §3) |
 
 - Tách ở **cấp cha** (`GuLibrary-Prod\kho`, không phải `kho-prod` cạnh nhau) — cô lập
   `.stversions/`, `_worker.log`, archive; worker trỏ rạch ròi, khó copy nhầm.
-- Mini PC = anchor node 24/7 (Syncthing chạy dạng Windows service). Android dùng
+- Atomman = anchor node 24/7 (Syncthing chạy dạng Windows service). Android dùng
   Syncthing-Fork (Catfriend1).
 
 ## 3. Worker
@@ -50,11 +50,38 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   trong PDF, Gú giữ bản trên điện thoại) → **xóa, KHÔNG archive**. Sidecar ảnh hợp lệ
   nhưng rỗng text (`IMAGE_PAGE_MARKER`, không OCR).
 - **Khu archive sibling `…\kho_archive\`** (vd `D:\GuLibrary-Prod\kho_archive\`, ngoài
-  Syncthing) giờ giữ hai loại nguồn: (a) bản gốc PDF scan nặng trước chuẩn hóa (v0.10.0),
-  (b) gốc `.doc`/`.ppt` (OLE cũ) sau khi convert (v0.13.0 — convert LibreOffice làm sidecar
-  degrade về `paragraph`/mất cấu trúc, nên giữ nguồn OOXML để phase 2 re-extract khi làm
-  search). Trùng tên → suffix `(n)`, không đè. `.docx`/`.pptx` + PDF gốc + ảnh **KHÔNG**
-  vào archive. Dọn tay định kỳ nếu đầy đĩa, không có gì tự xóa.
+  Syncthing) giữ ba loại nội dung: (a) bản gốc PDF scan nặng trước chuẩn hóa (v0.10.0),
+  (b) gốc `.doc`/`.ppt` (OLE cũ) sau khi convert (v0.13.0), (c) `_sidecar_backup/` — bản
+  sidecar trước khi `reslide` ghi đè (v0.14.0), (d) `_sidecar_backup_vni/` — bản trước khi
+  `vnifix` ghi đè (v0.15.0). Trùng tên → suffix `(n)`, không đè.
+  `.docx`/`.pptx` + ảnh **KHÔNG** vào archive; **PDF gốc chỉ vào archive khi bị re-raster**
+  (scan nặng, nhánh (a)) — PDF thường thì không. Dọn tay định kỳ nếu đầy đĩa, không có gì
+  tự xóa. Thực đo 2026-09-05: QA 12 nguồn OLE + 12 PDF scan; Prod 6 nguồn OLE + 4 PDF scan.
+- **`reslide` — dựng lại cấu trúc slide (v0.14.0), chạy TAY, không nằm trong vòng 3 phút:**
+  `python -m gu_library_worker.reslide --kho "D:\GuLibrary\kho" --kho "D:\GuLibrary-Prod\kho"`
+  → **mặc định DRY-RUN**, chỉ báo; thêm `--apply` mới ghi. Gom các `paragraph` không nhãn
+  của sidecar gốc-`.ppt` lại theo `page` thành một unit `slide` mỗi trang. **`page` bê
+  nguyên từ unit cũ** — không tính lại, không convert lại PDF; sai bất kỳ điều kiện an
+  toàn nào (page vượt `pageCount`, `validate_sidecar` bẩn) thì **bỏ qua, giữ sidecar
+  degrade**. Sidecar cũ copy sang `_sidecar_backup/` trước khi ghi. Idempotent — chạy lại
+  ra `targets=0`. Ghi log vào `<kho>\_worker.log` như pass thường.
+- **Chuẩn hóa text lúc nuốt file — TỰ ĐỘNG, mọi định dạng (v0.16.0).** Worker tự sửa hai
+  lỗi làm search không tra được dù chữ nhìn vẫn bình thường: (a) **font cũ VNI-Times**
+  (`MIEÃN, GIAÛM` — gõ "miễn giảm" không khớp), (b) **dấu tiếng Việt bị tách rời**
+  (`i` + dấu sắc tổ hợp thay vì `í`). Chạy **sau mọi nhánh reader và sau khi neo trang**,
+  áp cho `.pdf` / `.docx` / `.pptx` / `.doc` / `.ppt` / ảnh như nhau. *(v0.15.0 chỉ cắm ở
+  nhánh `.doc`/`.ppt` nên tài liệu PDF/docx/pptx cùng lỗi vẫn lọt — đã vá ở v0.16.0.)*
+  **Không cần nhờ ai sửa tay nữa** với tài liệu thêm mới từ đây.
+- **`vnifix` — vá ngược tài liệu ĐÃ nằm trong kho (v0.15.0, mở rộng v0.16.0), chạy TAY,
+  ngoài vòng 3 phút:** `python -m gu_library_worker.vnifix --kho "D:\GuLibrary-Prod\kho"`
+  → **mặc định DRY-RUN**, thêm `--apply` mới ghi. Làm đúng việc mà pipeline làm lúc nuốt
+  file (VNI + NFC), nên chạy sau một lượt nhập sẽ ra `targets=0`. Tên module giữ `vnifix`
+  từ v0.15.0 nhưng phạm vi giờ là **chuẩn hóa text nói chung**, không riêng VNI. **Chỉ
+  `text` đổi** — `page`, `bbox`, `label`, `path`, metadata bê nguyên, nên neo trang không
+  thể xê dịch. Từ chối ghi nếu làm rỗng unit, đổi số từ, đổi danh sách `page`, hoặc
+  `validate_sidecar` bẩn. Backup vào `_sidecar_backup_vni/` (**tách khỏi**
+  `_sidecar_backup/` của `reslide` — thư mục đó giữ bản trước-khi-gom-slide, không được
+  đè). Idempotent.
 - **Hai task hạ tầng riêng (v0.11.0 — ĐANG CHẠY, độc lập với `GuLibraryWorker`, chết
   độc lập):** `GuLibraryPrintSync` (mirror `_print/` Prod → `gdrive:GuLibrary/Di-in`
   mỗi ~15 phút) và `GuLibraryBackup` (CN 03:00 — robocopy snapshot → `rclone sync` lên
@@ -68,13 +95,13 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 
 ## 4. Dựng máy mới vào cụm (hoặc dựng lại từ đầu) — 6 bước
 
-1. **Folder:** trên mini PC, tạo (hoặc xác nhận) folder kho đúng cấp cha riêng
+1. **Folder:** trên Atomman, tạo (hoặc xác nhận) folder kho đúng cấp cha riêng
    (`D:\GuLibrary\kho` hay `D:\GuLibrary-Prod\kho`).
-2. **Syncthing mini PC:** Add Folder với folder-ID đúng bảng trên; kiểm `.stversions`
+2. **Syncthing Atomman:** Add Folder với folder-ID đúng bảng trên; kiểm `.stversions`
    (simple versioning) bật — đây là lưới M8.
-3. **Máy Android mới:** cài Syncthing-Fork → trao đổi device-ID với mini PC → share
+3. **Máy Android mới:** cài Syncthing-Fork → trao đổi device-ID với Atomman → share
    ĐÚNG MỘT folder (QA hoặc Prod, không bao giờ cả hai) → chờ sync xong lượt đầu.
-4. **Worker:** *(mini PC mới — dựng môi trường trước:* cài Python 3.11+ và LibreOffice,
+4. **Worker:** *(Atomman mới — dựng môi trường trước:* cài Python 3.11+ và LibreOffice,
    `git clone` repo worker, `python -m venv .venv` rồi `.venv\Scripts\python -m pip install
    -e .`; soffice auto-detect nên không cần sửa PATH — chi tiết README worker.*)*
    Nếu là kho mới, thêm đường dẫn vào `-KhoRoot` (tách phẩy) của Scheduled
@@ -91,7 +118,7 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
    (gitignored). Cài lên máy: release-đè-release **cùng keystore** không mất data;
    release-**đè-debug phải gỡ trước** (khác chữ ký → `install -r` báo lỗi). Rồi Cài đặt →
    Folder kho → chọn đúng folder qua SAF; kiểm badge "Đã đồng bộ" (dựa connected của
-   device mini PC, không dựa tên kho).
+   device Atomman, không dựa tên kho).
 6. **Smoke:** bỏ 1 file PDF qua đường Share vào một môn → thấy ⏳ → chờ vòng worker →
    thành tài liệu mở được. Thông chuỗi này = môi trường sống.
 
@@ -123,7 +150,7 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 
 ## 6. Khi có biến — checklist chẩn đoán nhanh
 
-- **App báo "Chưa thấy mini PC":** kiểm Syncthing mini PC đang chạy (service) + máy đó
+- **App báo "Chưa thấy Atomman":** kiểm Syncthing Atomman đang chạy (service) + máy đó
   connected trong Syncthing UI. Từ v1.2.1 badge chỉ sai khi device thật sự mất kết nối.
 - **App (Cài đặt) hiện version cũ sau khi update:** `versionName` được **nướng vào APK
   lúc build** (build.gradle đọc `package.json`), không đọc runtime → cài lại một APK dựng
@@ -132,12 +159,27 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 - **File kẹt ⏳ lâu:** mở `<kho>\_worker.log`. File đuôi lạ/tmp kẹt lại là *tín hiệu
   dọn tay theo thiết kế*, worker không tự xóa. Segment tiền tố độc → worker route về
   "Chưa phân loại" + WARNING trong log.
+- **Ảnh (jpg/jpeg/png/webp) kẹt ⏳ không thành PDF:** app **nhận ảnh từ v1.19.0** (picker
+  "Chọn file từ máy" + share từ Gallery), nhưng đóng ảnh→PDF là việc của **worker**. Env
+  nào app nhận ảnh thì worker env đó **PHẢI biết xử ảnh TRƯỚC**, không thì ảnh nằm ⏳ vô
+  hạn. Thứ tự deploy bắt buộc: worker-image lên Prod trước → verify → rồi mới đẩy app
+  v1.19.0 sang máy Gú. (App whitelist đúng jpg/png/webp — HEIC/gif KHÔNG nhận, cố ý.)
+- **Thấy folder `_inbox (1)`, `_inbox (2)`… ở gốc kho, hoặc danh sách môn RỖNG dù kho
+  đầy:** đã gặp thật (2026-07-13, Flip 4, khi nhập nhiều ảnh liên tiếp). Gốc: `_inbox` bị
+  worker/Syncthing xóa+tạo lại giữa loạt import → cache SAF stale → app tạo trùng
+  `_inbox (k)`; snapshot cũ coi `_inbox (k)` là môn rồi throw → **môn hiển thị rỗng —
+  DATA KHÔNG MẤT** (folder môn còn nguyên trên đĩa). **Đã fix ở app v1.19.0** (ensureDir
+  dò cursor tươi + tự lành dedup; snapshot lọc `_`-prefix + try/catch từng môn) → không
+  còn tái sinh `_inbox (k)`. Nếu môn vẫn rỗng sau churn cực đoan: DocumentsProvider của
+  OS kẹt index tạm thời → **reboot máy** dọn (data còn nguyên). File trong `_inbox (k)`
+  mồ côi (máy chưa lên v1.19.0) — worker chỉ quét `_inbox` → **dồn tay về `_inbox` rồi
+  xóa folder rác** (giữ nguyên tiền tố `[Môn]`).
 - **Sync đứng, thấy file mồ côi `.syncthing.*.tmp`:** đã gặp thật trên Flip 4.
   **Không phải bug app/worker, không có fix code.** Syncthing tự hòa giải sau vài vòng.
   Chỉ theo dõi xem có tái diễn thành mẫu hình lặp lại hay không; nếu chỉ lẻ tẻ thì bỏ qua.
 - **Nghi hai kho lẫn nhau:** kiểm từng máy Android chỉ share đúng 1 folder-ID;
   kiểm `-KhoRoot` của task đúng 2 đường dẫn.
-- **Mini PC vừa reboot:** không phải làm gì — service Syncthing + Scheduled Task (S4U)
+- **Atomman vừa reboot:** không phải làm gì — service Syncthing + Scheduled Task (S4U)
   tự dậy. Chỉ kiểm nếu 15 phút sau file vẫn kẹt.
 - **Nghi rclone chết:** hai task hạ tầng chết độc lập với worker — worker chạy ngon
   không nói lên rclone còn sống. Kiểm `D:\GuLibrary-Prod\_print-sync.log` / `_backup.log`
@@ -156,11 +198,90 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 
 ## 8. Trạng thái mốc & việc còn treo
 
-- App **v1.17.0** trên main, sạch, chỉ còn nhánh `main`.
-- Worker **v0.13.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+- App **v1.38.0** trên main, sạch, chỉ còn nhánh `main` — **tìm kiếm toàn văn** đã merge,
+  tag, nghiệm thu trên hai máy test. Search ăn thẳng `units[]` trong sidecar: mỗi đơn vị
+  là một kết quả tra được, hiện kèm `label` (vd "Điều 5", "Slide 12") và `page`, chạm là
+  mở PDF đúng trang.
+- **Hệ quả vận hành của search (quan trọng khi sửa sidecar):** app đọc `units[].text`,
+  `label`, `page`, và **cache chỉ mục theo `size` + `lastModified` của file sidecar**.
+  Ghi đè sidecar → mọi máy Android đọc lại và dựng lại chỉ mục **riêng file đó** (đúng
+  thiết kế). Ghi đè hàng loạt thì máy Gú sẽ có một lượt cập nhật chỉ mục dài — cân nhắc
+  chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
+  **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
+  — đây là lý do cả ba beat vừa rồi đều đáng làm.
+- Worker **v0.16.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
-  `.doc`/`.ppt` thay vì xóa (v0.13.0). Nợ Phase 2 đã đặt cọc: re-extract cấu trúc từ
-  các nguồn `.doc`/`.ppt` đã archive (làm cùng lúc thiết kế search).
+  `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
+  chuyển font cũ VNI→Unicode (v0.15.0),
+  chuẩn hóa text mọi đường vào (v0.16.0).
+- **Nợ Phase 2 "re-extract nguồn `.doc`/`.ppt` đã archive" — ĐÃ TRẢ (v0.14.0), nhưng khác
+  cách đặt cọc.** Đo trước khi làm cho ra ba điều không lường:
+  1. `.doc` **không** degrade — hai bộ luật `.doc` vẫn parse ra `legal` đủ 1717/912 unit.
+     Chỉ `.ppt` (slide) mới hỏng. Phạm vi thật: **19 tài liệu** (QA 7, Prod 12), không
+     phải hàng trăm. Tổng số sidecar degrade là 50/178 (QA) và 32/113 (Prod), nhưng phần
+     lớn là **PDF gốc dạng văn xuôi** — vốn không có cấu trúc để cứu, không phải nợ này.
+  2. Prod có **15 tài liệu gốc-OLE trong kho nhưng chỉ 6 nguồn trong archive** → 9 tài
+     liệu mất nguồn (xử lý trước v0.13.0, hồi đó còn xóa gốc). Re-extract từ archive
+     không chạm tới được.
+  3. Vì vậy chọn cách **gom lại từ chính sidecar** thay vì đọc lại nguồn: `page` bê
+     nguyên nên không thể lệch trang, và vá được cả 9 ca mất nguồn. Archive **không cần
+     dùng tới**, nhưng vẫn giữ (nguồn OOXML còn giá trị nếu sau này muốn speaker notes).
+  Verify: QA áp trước, xong mới tới Prod; kiểm ngược trên chính PDF trong kho —
+  **515/515 unit (QA 140, Prod 375) có text nằm đúng trang nó trỏ tới**, không mất chữ,
+  `validate_sidecar` sạch, chạy lại ra `targets=0`.
+- **Mồ côi trong archive (tín hiệu, KHÔNG xóa):** QA có 2 nguồn đã archive mà không tìm
+  thấy cặp `pdf`+`json` tương ứng trong kho — `BÀI GIẢNG LUẬT KINH TẾ-2.ppt` và
+  `2022-11-Luat So huu tri tue - HN lan 3-2.doc`. Nhiều khả năng Gú đã xóa/đổi tên tài
+  liệu trong kho sau khi worker xử lý. Prod map đủ 6/6.
+- **Một sidecar hỏng sẵn ở QA (có từ trước, chưa đụng):** `Chưa phân loại\Giám định pháp
+  y, tâm thần.json` thiếu `schemaVersion` + `title` → `validate_sidecar` fail. Có `.pdf`
+  đi kèm. Không phải do beat này; cần soi riêng. Prod: 113/113 sidecar hợp lệ.
+- **Nợ font cũ VNI-Times — ĐÃ TRẢ (v0.15.0).** Text sidecar ra dạng
+  `"CHÖÔNG XV — MIEÃN, GIAÛM"` nên gõ "miễn giảm" không khớp. Thực tế là **6 deck chứ
+  không phải 5** — `Bai 11` cũng có 645 ký tự VNI (chỉ ~9% nên chỉ số tỉ-lệ-ký-tự ban đầu
+  không bắt được); tất cả nằm trong `Hình sự phần chung\Slide tổ HS\`. Cộng 1 đoạn lẫn
+  VNI trong `Ôn thi\GIÁO TRÌNH HSPC` → **7 tài liệu, 224 unit** đã chuyển trên Prod.
+  Nguồn `.ppt` trong archive được dùng làm **trọng tài**, không phải nguồn text: convert
+  `.ppt`→`.pptx` bằng LibreOffice giữ nguyên tên font `VNI-Times` ở từng run, xác nhận
+  chỗ nào VNI chỗ nào Unicode. Text vẫn lấy từ sidecar tại chỗ nên `page` không đổi.
+  Verify: `page`/`bbox`/`label`/metadata/số-từ giữ nguyên tuyệt đối 7/7, `validate_sidecar`
+  sạch. Còn **20 unit sót ký tự VNI** — mảnh chữ PDF trích ra đã vỡ sẵn (dấu bị tách khỏi
+  nguyên âm bởi xuống dòng), không bảng chuyển nào cứu được.
+- **Bài học từ v0.15.0 — dữ liệu thật bác hai quy tắc "hiển nhiên đúng", cả hai đều bị
+  chặn ở dry-run:** (a) "nguyên âm + dấu" KHÔNG phải bằng chứng VNI — `oà`/`oá` là tiếng
+  Việt Unicode bình thường, quy tắc đó biến `Toà án`→`Tồ án`, `hoàn thiện`→`hồn thiện`,
+  `Hoàng`→`Hồng` trên 4 tài liệu; (b) ký tự `ö ä ü ñ` cũng KHÔNG phải bằng chứng — kho có
+  trích dẫn tiếng Đức/Tây Ban Nha, quy tắc đó biến `öffentliches`→`ưffentliches`,
+  `Acuña`→`Acuđa`. Bằng chứng chốt: **dấu riêng của VNI đứng NGAY SAU nguyên âm**. Đây là
+  lý do mọi công cụ ghi-đè sidecar phải mặc định DRY-RUN.
+- **Dấu tiếng Việt bị TÁCH RỜI — ĐÃ SỬA (v0.16.0).** Lưu là `i` + dấu sắc tổ hợp thay vì
+  `í`: nhìn y hệt trên màn hình, nhưng không truy vấn nào khớp được. Đã chuẩn hóa NFC cho
+  **26 tài liệu / 2.381 unit** ở Prod. Nặng nhất là các bộ luật —
+  `3. HỢP NHẤT_BLHS 2015…` 940/1674 unit, `0. VBHN BLHS 2015` 938/1627,
+  `8. TỌA ĐÀM TƯ PHÁP NGƯỜI CTN` 103/1157 — nên đây là món cải thiện tra cứu lớn nhất
+  trong cả loạt. Kiểm mẫu xác nhận thay đổi **thuần NFC** (`NFC(cũ) == mới`, đổi do VNI = 0);
+  verify 26/26 giữ nguyên `page`/`bbox`/`label`/metadata/số-từ.
+- **Lỗ hổng v0.15.0 đã vá:** bản đó chỉ cắm chuẩn hóa ở nhánh `.doc`/`.ppt`, mà 26 tài
+  liệu dính lỗi gồm **12 pdf, 8 pptx, 6 docx** — tức phần lớn vẫn lọt, và tài liệu thêm
+  mới cũng sẽ lọt. v0.16.0 chuyển thành một lượt chạy sau mọi nhánh reader. Bài học: cắm
+  bản vá vào đúng cái nhánh nơi mình *tình cờ tìm thấy* lỗi thì bỏ sót mọi đường vào khác.
+- **OCR — số đo mới, mở lại món đã tưởng đóng (2026-09-05).** Con số cũ "1/178 (~0,6%)"
+  đã lỗi thời (đo trước v0.12.0, trước khi có ảnh→PDF). Đo lại, tiêu chí: sidecar hợp lệ
+  mà **mọi unit đều mang `IMAGE_PAGE_MARKER`**:
+
+  | | Tài liệu | Trang |
+  |---|---|---|
+  | QA | 13/178 (7,3%) | 844/12.136 (7,0%) |
+  | **Prod** | **12/113 (10,6%)** | **680/9.096 (7,5%)** |
+
+  Đối chiếu với lịch sử đọc thật (`_reading-*.json`): Prod **5/12** tài liệu ảnh đã từng
+  được mở, và mở gần đây (7/2026) — trong đó `2. Luật sửa đổi BLHS 2025` đọc tới trang
+  **38/48**, `GT LUAT HINH SU PHAN CHUNG` 398 trang, `Giám định pháp y, tâm thần` 164
+  trang. 7 tài liệu còn lại (6 ảnh báo giấy 1 trang + 1 NQ 6 trang) chưa mở bao giờ.
+  Quy mô kỹ thuật: 680 trang, ~1,78 MP/trang, 146,7 MB. **Tesseract chưa cài trên
+  Atomman.** *Ước lượng (CHƯA đo, chỉ để cân nhắc): Tesseract `vie` cỡ 1–3 s/trang ở độ
+  phân giải này → ~12–35 phút cho một lượt toàn kho Prod, cộng công cài Tesseract +
+  traineddata tiếng Việt.* Chưa xây gì — chờ huynh quyết.
 - Backlog feature (M10 folder-level, breadcrumb bấm-nhảy-tầng, nav chữ-bên-icon) đang
   **đóng băng có chủ ý**: Gú đang dùng thật, chưa phát sinh feedback. Không mở beat mới
   cho tới khi có vấn đề quan sát được từ người dùng thật — không suy diễn nhu cầu.

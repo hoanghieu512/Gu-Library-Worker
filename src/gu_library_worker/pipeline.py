@@ -16,6 +16,8 @@ from .readers.pdf_reader import read_pdf
 from .pages import anchor_pages, page_count
 from .convert import to_pdf as default_convert
 from .normalize import is_heavy_scan, normalize_pdf
+from .reslide import slide_units_from_pdf_blocks
+from .vni import normalize_text
 
 VN_TZ = timezone(timedelta(hours=7))
 
@@ -93,6 +95,27 @@ def process_one_file(
     else:  # .doc / .ppt legacy -> convert then extract from the PDF
         canonical_pdf = convert_fn(src, tmp_workdir)
         extraction = read_pdf(canonical_pdf)
+        if ext == ".ppt" and extraction.kind == "prose" and not extraction.image_pdf:
+            # A deck read back from its own PDF render arrives as unlabelled text
+            # blocks, which search can only show as fragments. Regroup them into
+            # one slide per page, keeping the page anchors the PDF reader just
+            # produced (a deck is one slide per page). A deck that parsed as
+            # `legal` is left alone — Điều/Khoản is better structure than slides.
+            slides = slide_units_from_pdf_blocks(extraction.units,
+                                                 page_count(canonical_pdf))
+            if slides:
+                extraction = Extraction(kind="slide", units=slides)
+
+    # Make the text searchable, whichever reader produced it. Two things break
+    # search without breaking anything visible: text typed in a legacy VNI-Times
+    # font (Vietnamese stored as ASCII letters that only LOOK right in that
+    # font), and tone marks left as separate combining characters (`i` + ́
+    # instead of `í`) — neither can ever match what someone types. Both arrive
+    # through PDF, docx and pptx alike, so this sits after every branch rather
+    # than inside one, and after page anchoring so matching is unaffected. It is
+    # a no-op on text that is already clean.
+    for unit in extraction.units:
+        unit.text = normalize_text(unit.text)
 
     doc = Document(
         title=Path(parsed.clean_name).stem,

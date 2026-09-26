@@ -11,14 +11,14 @@
 - **TDD + commit thường + DRY + YAGNI.**
 - **Hai nơi chạy, tách bạch:**
   - **App Android** — Capacitor + Ionic + React + Vite, build bằng CLI (không Android Studio).
-  - **Mini PC worker** — script chạy 24/7, watch `_inbox/`, convert + extract. KHÔNG nằm trong app.
+  - **Atomman worker** — script chạy 24/7, watch `_inbox/`, convert + extract. KHÔNG nằm trong app.
 - **Sợi chỉ xuyên suốt (quan trọng nhất):** sidecar JSON sinh ở Phase 1 **phải chứa sẵn** text + cấu trúc Điều/Khoản/Điểm + vị trí trang — dù Search/Cross-link là Phase 2. Thiếu là Phase 2 phải làm lại cả kho.
 
 ---
 
 ## Thứ tự build (theo phụ thuộc)
 
-Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → nhập → xưởng mini PC → backup → đường ra đi in.
+Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → nhập → xưởng Atomman → backup → đường ra đi in.
 
 ---
 
@@ -49,14 +49,14 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 
 ### M3 — Sync status reader (đèn trạng thái)
 **Mục tiêu:** cho người dùng biết "đã an toàn đổi máy chưa".
-**Kết quả mong muốn:** app đọc API trạng thái Syncthing trên chính máy đó và hiện 1 trong 3 trạng thái ở góc phải header: ✓ đã đẩy hết lên mini PC / ⟳ đang đẩy / ⚠ chưa thấy mini PC.
-**Ràng buộc đã chốt:** mốc là "máy này đã đẩy hết lên mini PC chưa", KHÔNG cố báo "cả 3 máy giống nhau chưa"; không có nút "Sync now" (đèn chỉ để yên tâm). Android = Syncthing-Fork (Catfriend1); mini PC = Syncthing chạy như Windows service; cả hai là Syncthing v2. App đọc REST API local (`http://localhost:8384`) qua **native HTTP (CapacitorHttp)**, KHÔNG `fetch` (né CORS/mixed-content). API key **nhập tay một lần** vào Settings (lưu Preferences); **mini PC chọn từ danh sách devices** app liệt kê (lưu Preferences). Map: "thấy mini PC" = `/rest/system/connections`; "đã đẩy hết" = `/rest/db/completion?folder=<id kho>&device=<minipc>` = 100%; poll ~10s.
-**Tiền đề (việc tay, ngoài app — phải xong TRƯỚC khi nghiệm thu):** cài + ghép cặp + share folder kho theo `gu-library-syncthing-setup.md`. Tối thiểu **1 điện thoại dev + mini PC** để code + test; CC cần instance v2 thật để soi field REST API (đừng theo doc v1).
+**Kết quả mong muốn:** app đọc API trạng thái Syncthing trên chính máy đó và hiện 1 trong 3 trạng thái ở góc phải header: ✓ đã đẩy hết lên Atomman / ⟳ đang đẩy / ⚠ chưa thấy Atomman.
+**Ràng buộc đã chốt:** mốc là "máy này đã đẩy hết lên Atomman chưa", KHÔNG cố báo "cả 3 máy giống nhau chưa"; không có nút "Sync now" (đèn chỉ để yên tâm). Android = Syncthing-Fork (Catfriend1); Atomman = Syncthing chạy như Windows service; cả hai là Syncthing v2. App đọc REST API local (`http://localhost:8384`) qua **native HTTP (CapacitorHttp)**, KHÔNG `fetch` (né CORS/mixed-content). API key **nhập tay một lần** vào Settings (lưu Preferences); **Atomman chọn từ danh sách devices** app liệt kê (lưu Preferences). Map: "thấy Atomman" = `/rest/system/connections`; "đã đẩy hết" = `/rest/db/completion?folder=<id kho>&device=<minipc>` = 100%; poll ~10s.
+**Tiền đề (việc tay, ngoài app — phải xong TRƯỚC khi nghiệm thu):** cài + ghép cặp + share folder kho theo `gu-library-syncthing-setup.md`. Tối thiểu **1 điện thoại dev + Atomman** để code + test; CC cần instance v2 thật để soi field REST API (đừng theo doc v1).
 **Nghiệm thu:**
-- [ ] Nhập API key + chọn mini PC trong Settings → app đọc được trạng thái Syncthing local.
-- [ ] Còn file đang truyền lên mini PC → hiện ⟳.
-- [ ] Hết file chờ + thấy mini PC → hiện ✓.
-- [ ] Ngắt mạng / mini PC tắt → hiện ⚠.
+- [ ] Nhập API key + chọn Atomman trong Settings → app đọc được trạng thái Syncthing local.
+- [ ] Còn file đang truyền lên Atomman → hiện ⟳.
+- [ ] Hết file chờ + thấy Atomman → hiện ✓.
+- [ ] Ngắt mạng / Atomman tắt → hiện ⚠.
 
 ---
 
@@ -85,7 +85,7 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 
 ### M6 — Import qua Share Intent
 **Mục tiêu:** thêm tài liệu với ít thao tác nhất.
-**Kết quả mong muốn:** từ trình duyệt/Files, Share một file (PDF/Word/PPTX) → Gú's Library → **sheet trượt lên** hỏi chọn môn ngay (gợi ý môn vừa dùng) + nút "Chưa phân loại" → file gốc rơi vào `_inbox/` với **tên gắn tiền tố môn đích** để Syncthing đẩy lên mini PC. Tài liệu hiện trạng thái ⏳ cho tới khi mini PC xử lý xong.
+**Kết quả mong muốn:** từ trình duyệt/Files, Share một file (PDF/Word/PPTX) → Gú's Library → **sheet trượt lên** hỏi chọn môn ngay (gợi ý môn vừa dùng) + nút "Chưa phân loại" → file gốc rơi vào `_inbox/` với **tên gắn tiền tố môn đích** để Syncthing đẩy lên Atomman. Tài liệu hiện trạng thái ⏳ cho tới khi Atomman xử lý xong.
 **Ràng buộc đã chốt:** Share Intent là đường chính; watch-folder (copy vào `_inbox/` từ máy tính) là đường phụ; nút "+" trong app là dự phòng. Chọn môn bằng **sheet trượt lên** (không màn riêng). **Môn đích lưu bằng tiền tố tên file** `[<môn>] ...` (interface M6↔M7, nhất quán `_print/` — spec 5.1, 5.4); "Chưa phân loại" → tiền tố `[Chưa phân loại]`.
 **Rủi ro / điểm cần thử nghiệm — spike tách đôi TRƯỚC khi viết plan đầy đủ (như M5):**
 - **Spike A — SAF *ghi*:** app tạo thử file vào `_inbox/` trong kho đã cấp quyền → file thật xuất hiện + Syncthing nuốt. M2 mới validate quyền *đọc* cây kho; ghi qua content-URI là vùng spec gắn cờ "cần thử nghiệm" (spec 14.7, cùng nhóm M9).
@@ -100,13 +100,13 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 
 ---
 
-### M7 — Mini PC worker (convert + extract) — *chạy trên mini PC, không phải app*
+### M7 — Atomman worker (convert + extract) — *chạy trên Atomman, không phải app*
 **Mục tiêu:** biến file gốc thành cặp PDF + sidecar chuẩn.
 **Kết quả mong muốn:** worker Python chạy theo nhịp (polling) quét `_inbox/`; mỗi file gốc hợp lệ → (1) convert sang PDF bằng LibreOffice headless (PDF gốc giữ nguyên), (2) extract sidecar theo `gu-library-sidecar-schema.md` gồm text đầy đủ + cấu trúc Điều/Khoản/Điểm + neo trang, (3) đặt cặp `.pdf` + `.json` vào đúng môn (bỏ tiền tố), (4) bỏ file gốc. Syncthing rải về 3 máy.
 
 **Ràng buộc đã chốt (4 trục thiết kế):**
 - **Schema sidecar (trục 1):** theo `gu-library-sidecar-schema.md` — phẳng + `path` tổ tiên; text trong từng đơn vị (không blob tổng); neo `page` (trang bắt đầu, 1-indexed); mỗi loại một `type` (`dieu/khoan/diem/slide/heading/paragraph`) với `paragraph`/`slide` là đáy phổ quát, **degrade sạch** (parse hụt cấu trúc → rơi về `paragraph`, không bao giờ mất text). `bbox` CHƯA thêm (spike highlight quyết — xem dưới).
-- **Ngôn ngữ (trục 2):** **Python** (PyMuPDF / python-docx / python-pptx). Worker là tiến trình riêng trên mini PC, không chia code với app.
+- **Ngôn ngữ (trục 2):** **Python** (PyMuPDF / python-docx / python-pptx). Worker là tiến trình riêng trên Atomman, không chia code với app.
 - **Watch + run (trục 3):** **polling vài phút qua Windows Scheduled Task** (KHÔNG daemon/fs-event); **stateless** (trạng thái derive từ `_inbox/`, không sổ "đã xử"). **Cổng lọc đầu vào:** chỉ {pdf,doc,docx,ppt,pptx}; **stability check** (chờ size đứng yên 2 lần) chống đụng file đang-ghi-dở; bỏ đuôi tạm `.tmp`/`.crdownload`/`.syncthing.*`; **file kẹt KHÔNG tự xóa** (để app hiện ⏳ làm tín hiệu dọn tay). **Trùng tên đích cùng môn** → auto-suffix `(1)` cho **cả cặp** (không ghi đè, không để kẹt).
 - **Test (trục 4):** **repo riêng** (`gu-library-worker`, tách app); schema nguồn ở spec (`gu-library-sidecar-schema.md`), mỗi bên tự validate. **Fixture hai tầng:** tổng hợp (assert chặt từng nhánh reader) + 5 file thật của Gú (smoke test = nghiệm thu). **Ba lớp test:** lọc đầu vào · mỗi reader ra đúng hình dạng (không mất text) · đặt file đúng chỗ.
 
@@ -124,12 +124,12 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 
 ---
 
-### M8 — Backup (versioning Syncthing) — *cấu hình mini PC*
+### M8 — Backup (versioning Syncthing) — *cấu hình Atomman*
 **Mục tiêu:** chống xóa nhầm lan truyền (rủi ro thật, không phải hỏng ổ).
-**Kết quả mong muốn:** bật versioning của Syncthing trên mini PC để giữ bản cũ của file bị xóa/sửa (vd 30 ngày), khôi phục lại được khi lỡ tay.
+**Kết quả mong muốn:** bật versioning của Syncthing trên Atomman để giữ bản cũ của file bị xóa/sửa (vd 30 ngày), khôi phục lại được khi lỡ tay.
 **Ràng buộc đã chốt:** đây là cấu hình Syncthing, không phải code app; off-site Drive là tùy chọn Phase 3.
 **Nghiệm thu:**
-- [ ] Xóa một file trong kho → sau khi sync, bản cũ vẫn moi lại được từ versioning trên mini PC.
+- [ ] Xóa một file trong kho → sau khi sync, bản cũ vẫn moi lại được từ versioning trên Atomman.
 
 ---
 
@@ -137,7 +137,7 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 **Mục tiêu:** xoá lỗi gốc "copy tay từng file đi in dễ sai" — app gom hộ + đặt tên sạch, người chỉ kéo một phát lên Drive.
 **Kết quả mong muốn:** trong khi đọc/duyệt, đánh dấu được tài liệu **"cần in"** (cờ này thấy trên cả 3 máy). Một hành động gom: app copy mọi tài liệu "cần in" vào `_print/` trong kho, tên gắn tiền tố môn để không trùng, bản gốc trong môn giữ nguyên. Tài liệu đã nằm trong `_print/` hiện trạng thái **"đã gửi đi in"** (suy ra từ filesystem, không lưu state riêng). Sau khi in xong, tick **"xong"** → app xoá file khỏi `_print/` + clear cờ "cần in". Việc kéo `_print/` lên folder Drive "in" là thao tác tay của Gú ở PC (mức C chưa code Drive).
 **Ràng buộc đã chốt:**
-- Cờ "cần in" là metadata app-owned **per-file**, **có sync**, **KHÔNG ghi vào sidecar** (sidecar thuộc mini PC) — giữ nguyên tắc "nhiều file nhỏ, không file tập trung bị nhiều máy ghi" (spec 14.4).
+- Cờ "cần in" là metadata app-owned **per-file**, **có sync**, **KHÔNG ghi vào sidecar** (sidecar thuộc Atomman) — giữ nguyên tắc "nhiều file nhỏ, không file tập trung bị nhiều máy ghi" (spec 14.4).
 - "Đã gửi đi in" **derive từ sự hiện diện trong `_print/`**, không tạo state thứ hai cho cùng một sự thật.
 - Gom = copy (giữ gốc); tên trong `_print/` có tiền tố môn chống trùng.
 - KHÔNG có trạng thái "đang in"; "xong" là dọn thủ công.
@@ -158,15 +158,15 @@ Nền kỹ thuật → dữ liệu → đồng bộ → giao diện → xem → 
 **Ràng buộc đã chốt (thiết kế dữ liệu — hiện thực hóa Phase 2):**
 - **Đổi tên KHÔNG đụng nội dung sidecar:** app hiển thị theo **tên file** (basename), không đọc `title` → rename = đổi tên **cặp** `.pdf`+`.json` cho khớp (lệch một cái là vỡ "cùng basename = một tài liệu"). Không ghi nội dung sidecar worker sở hữu → KHÔNG chạm cảnh báo spec 14.4. (`title` sidecar sẽ lệch — Phase 1 vô hại; M10 quyết: lờ hay bỏ `title`.)
 - **Chuyển môn = move cặp file sang folder khác, zero đụng JSON** (môn = folder name, sidecar không lưu môn — spec 4.1b).
-- **Xóa** đụng rủi ro xóa-nhầm-lan-truyền (spec 10) → versioning mini PC (M8) là lưới đỡ.
+- **Xóa** đụng rủi ro xóa-nhầm-lan-truyền (spec 10) → versioning Atomman (M8) là lưới đỡ.
 - Cả ba chia chung **spike "app ghi được vào folder môn chưa"** — M2 spike đọc, M6/M9 spike ghi `_inbox/`+`_print/`, **chưa cái nào ghi folder môn**. Spike này mở M10.
 **Nghiệm thu:** *(chi tiết hóa khi mở M10 ở Phase 2)*
 - [ ] Spike ghi folder môn pass trên máy thật.
 - [ ] Đổi tên → cặp pdf+json đổi đồng bộ, app hiện tên mới, mở xem vẫn đúng.
 - [ ] Chuyển môn → cặp file sang folder môn mới, không sửa JSON, app hiện đúng môn.
-- [ ] Xóa → tài liệu biến mất, bản cũ vẫn moi được từ versioning mini PC.
+- [ ] Xóa → tài liệu biến mất, bản cũ vẫn moi được từ versioning Atomman.
 
 ---
 
 ## Hết Phase 1
-App dùng được thật: thêm tài liệu (Share) → mini PC convert → đồng bộ 3 máy → mở xem, nhớ chỗ đang đọc, biết khi nào an toàn đổi máy, lỡ xóa thì cứu được, gom tài liệu đi in không sót/nhầm. Sidecar đã chứa sẵn tri thức cho Phase 2 (Search + Cross-link) cắm vào sau mà không phải đập kho.
+App dùng được thật: thêm tài liệu (Share) → Atomman convert → đồng bộ 3 máy → mở xem, nhớ chỗ đang đọc, biết khi nào an toàn đổi máy, lỡ xóa thì cứu được, gom tài liệu đi in không sót/nhầm. Sidecar đã chứa sẵn tri thức cho Phase 2 (Search + Cross-link) cắm vào sau mà không phải đập kho.
