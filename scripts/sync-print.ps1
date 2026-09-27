@@ -29,8 +29,16 @@ try {
     if ($RcloneConfig) { $rcArgs += @("--config", $RcloneConfig) }
 
     Log "INFO" "sync start: $src -> $($RcloneRemote):$DriveDir"
-    $out = & rclone @rcArgs 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "rclone exit $LASTEXITCODE : $out" }
+    # rclone writes NOTICE lines to stderr even on success (e.g. clock skew). Under
+    # Windows PowerShell 5.1 with ErrorActionPreference=Stop, a redirected stderr line
+    # becomes a terminating error that aborts the run before rclone finishes — so relax
+    # it for this call and judge success by the exit code alone.
+    $ErrorActionPreference = "Continue"
+    $out = @(& rclone @rcArgs 2>&1 | ForEach-Object { "$_" })
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($code -ne 0) { throw "rclone exit $code : $($out -join ' | ')" }
+    if ($out) { Log "WARN" "rclone: $($out -join ' | ')" }
     Log "INFO" "sync ok"
     exit 0
 } catch {

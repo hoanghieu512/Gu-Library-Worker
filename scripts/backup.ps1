@@ -50,8 +50,14 @@ try {
     $rcArgs = @("sync", $backupDir, "$($RcloneRemote):$DriveDir")
     if ($RcloneConfig) { $rcArgs += @("--config", $RcloneConfig) }
     Log "INFO" "drive sync start: $backupDir -> $($RcloneRemote):$DriveDir"
-    $out = & rclone @rcArgs 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "rclone exit $LASTEXITCODE : $out" }
+    # Same PowerShell 5.1 stderr trap as sync-print.ps1: a harmless rclone NOTICE must
+    # not abort the run — judge success by the exit code alone.
+    $ErrorActionPreference = "Continue"
+    $out = @(& rclone @rcArgs 2>&1 | ForEach-Object { "$_" })
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($code -ne 0) { throw "rclone exit $code : $($out -join ' | ')" }
+    if ($out) { Log "WARN" "rclone: $($out -join ' | ')" }
     Log "INFO" "drive sync ok"
     exit 0
 } catch {

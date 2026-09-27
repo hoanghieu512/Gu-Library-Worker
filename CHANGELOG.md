@@ -5,6 +5,15 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.16.1] — 2026-09-27 — Sync `_print/`/backup không còn chết vì một dòng NOTICE của rclone
+### Fixed
+- **`sync-print.ps1` và `backup.ps1` không coi stderr của rclone là lỗi nữa.** Cả hai đặt `$ErrorActionPreference = "Stop"` rồi gọi `rclone ... 2>&1`. Trên Windows PowerShell 5.1, *bất kỳ* dòng stderr nào cũng thành lỗi dừng script → rclone bị cắt trước khi sync. Kể cả `NOTICE` vô hại cũng vậy, mà rclone in `NOTICE` cả khi chạy thành công. Nay tạm hạ về `Continue` quanh lời gọi rclone và **chỉ phán theo exit code**. Output của rclone khi thành công được ghi thành dòng `WARN rclone: ...` → vẫn nhìn thấy trong log, nhưng không còn chặn sync.
+- Khi rclone thất bại thật, dòng `ERROR` nay luôn có tiền tố `rclone exit N :`. Trước đây nhánh này không bao giờ chạy tới, vì script đã dừng ở dòng stderr đầu tiên.
+### Investigation
+- **Sự cố thật (2026-09-21 → 09-26):** `_print/` Prod không lên Drive suốt 6 ngày. Gốc là đồng hồ Atomman chậm ~5 phút 44 giây: lần sync giờ thành công cuối là 11/06, vì `w32time` chỉ có một nguồn `time.windows.com,0x9` và nguồn này hỏng dai dẳng từ máy này. rclone bắt đầu in `NOTICE: Time may be set wrong` → lỗi PowerShell ở trên biến cảnh báo thành sự cố. `rclone lsl` chạy tay vẫn exit 0 suốt thời gian đó. Đã sửa nguồn giờ bằng tay (`time.google.com,0x8` + `time.windows.com,0x8`). Chi tiết + lệnh xử lý ở runbook §6.
+### Notes
+- Verify: harness dùng `rclone.cmd` giả trên PATH, 2 script × 2 ca (NOTICE + exit 0 / CRITICAL + exit 1). **Trước khi sửa 4/4 FAIL** (tái hiện đúng sự cố), **sau khi sửa 4/4 PASS**. Chạy thật `sync-print.ps1` trên Prod → `sync ok`. Không đụng code Python.
+
 ## [0.16.0] — 2026-09-06 — Chuẩn hóa text ở MỌI đường vào (không chỉ `.doc`/`.ppt`)
 ### Fixed
 - **Chuẩn hóa text giờ áp cho mọi định dạng nguồn, không riêng `.doc`/`.ppt`.** v0.15.0 cắm chuyển-VNI trong nhánh OLE cũ, nên tài liệu `.pdf`/`.docx`/`.pptx` mang cùng lỗi vẫn lọt — **và đó là phần lớn**: 26 tài liệu Prod dính lỗi dấu-tách-rời gồm 12 pdf, 8 pptx, 6 docx, còn đoạn VNI trong `GIÁO TRÌNH HSPC` cũng là nguồn `pdf`. Nay một lượt `normalize_text` chạy **sau mọi nhánh reader và sau khi neo trang** (`anchor_pages` không bị ảnh hưởng), trước khi dựng `Document`. Với `.ppt` thì chạy sau khi gom slide → phạm vi rộng hơn, bắt được nhiều từ VNI hơn. No-op với text đã sạch; `IMAGE_PAGE_MARKER` ổn định qua NFC (có test).

@@ -110,6 +110,9 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
    **Nếu dựng lại Prod** cần thêm 2 task hạ tầng: cài rclone + `rclone config` (remote
    `gdrive`, OAuth — xem README worker mục "Prod ops") rồi
    `scripts\register-ops-tasks.ps1 -KhoRoot "D:\GuLibrary-Prod\kho" -RcloneRemote "gdrive"` (Admin).
+   **Kèm theo: sửa nguồn giờ ngay từ đầu.** Mặc định Windows chỉ có một nguồn giờ
+   (`time.windows.com`) và nó hỏng trên Atomman → đồng hồ trôi → rclone sync chết (§6).
+   Chạy lệnh `w32tm /config /manualpeerlist:...` ở §6 rồi kiểm bằng `/stripchart`.
 5. **App (dựng + cài APK release, làm trên máy Mac):** bump version = sửa **1 chỗ**
    `versionName` trong `package.json` (`versionCode` tĩnh =2 ở build.gradle — không tăng,
    sideload không cần). Dựng: `cd android && ./gradlew assembleRelease` →
@@ -185,6 +188,38 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   không nói lên rclone còn sống. Kiểm `D:\GuLibrary-Prod\_print-sync.log` / `_backup.log`
   và `Get-ScheduledTask GuLibraryPrintSync,GuLibraryBackup | Get-ScheduledTaskInfo |
   Select State,LastTaskResult` (LastTaskResult `0` = OK). Test auth tay: `rclone lsd gdrive:`.
+- **`_print-sync.log` lặp `ERROR sync failed: ... NOTICE: Time may be set wrong` — file
+  nằm trong `_print/` mà không lên Drive:** đã gặp thật (2026-09-21 → 09-26, 6 ngày không
+  sync được lần nào). **Đồng hồ Atomman lệch**, không phải lỗi Drive/OAuth — `rclone lsl
+  gdrive:` chạy tay vẫn exit 0. Hai lớp chồng nhau:
+  1. *Gốc — đồng hồ trôi:* Atomman chậm **~5 phút 44 giây**, trôi ~3 s/ngày. Lần sync
+     giờ thành công cuối là **11/06/2026**. `w32time` mặc định chỉ có **một** nguồn
+     `time.windows.com,0x9` (poll thưa ~9 tiếng), và nguồn đó hỏng dai dẳng từ máy này:
+     Event Log (System, nguồn `Time-Service`) lặp **ID 47** "peer is unreachable" và **ID
+     134** "No such host is known" (DNS lúc mạng rớt ban đêm). Không có nguồn dự phòng →
+     không sync được lần nào. *Giả thuyết, chưa chứng minh:* `time.windows.com` chỉ có IPv4,
+     service gửi từ **cổng nguồn UDP 123**, và nhiều ISP/router chặn cổng này. `w32tm
+     /stripchart` (cổng ngẫu nhiên) tới **cùng IP đó vẫn nhận được giờ**, còn service thì
+     không. `time.google.com` đi được qua IPv6 nên chạy ngon.
+  2. *Khuếch đại — script dừng vì một dòng cảnh báo:* `scripts\sync-print.ps1` đặt
+     `$ErrorActionPreference = "Stop"` và gọi `rclone ... 2>&1`. Trên **Windows PowerShell
+     5.1**, *bất kỳ* dòng stderr nào (kể cả NOTICE vô hại) cũng thành lỗi dừng script ngay
+     → rclone bị cắt trước khi kịp sync. Dấu hiệu nhận biết: dòng ERROR **không có** tiền
+     tố `rclone exit N :` (tiền tố này chỉ có khi rclone thất bại thật). **Đã vá ở v0.16.1**
+     (cả `sync-print.ps1` lẫn `backup.ps1`): script chỉ phán theo exit code. NOTICE giờ
+     hiện thành dòng `WARN rclone: ...` rồi vẫn `sync ok` → **thấy dòng WARN lệch giờ là
+     tín hiệu đi chỉnh đồng hồ**, sync không còn chết vì nó.
+  **Cách xử (Admin PowerShell):** thêm nguồn giờ dự phòng, bỏ kiểu poll thưa, rồi buộc
+  sync ngay:
+  `w32tm /config /manualpeerlist:"time.google.com,0x8 time.windows.com,0x8"
+  /syncfromflags:manual /update; Restart-Service w32time; w32tm /resync /rediscover`
+  (thêm `Set-Service w32time -StartupType Automatic` nếu service đang Stopped/Manual).
+  Báo `no time data was available` thì đợi 10–20 giây rồi chạy lại `w32tm /resync
+  /rediscover`. Dùng `/resync` trơn ngay sau khi vừa bật service thì chắc chắn gặp lỗi
+  này, vì peer chưa được hỏi lần nào. **Kiểm (không cần Admin):** `w32tm /stripchart
+  /computer:time.google.com /samples:2 /dataonly` → độ lệch phải cỡ `±00.0xs`; `w32tm
+  /query /peers` → `time.google.com` có `Stratum: 1`. Nút "Sync now" trong Settings dùng
+  chung service/nguồn này nên cũng hỏng theo khi nguồn hỏng — đừng tin nó để chẩn đoán.
 
 ## 7. Mô hình test cuốn chiếu (đã chốt 2026-07-03)
 
@@ -209,7 +244,8 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
-- Worker **v0.16.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+- Worker **v0.16.1** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+  v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6).
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),
