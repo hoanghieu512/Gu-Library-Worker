@@ -28,10 +28,10 @@ function Log($lvl, $msg) {
 # Weekly task: alert on the first failure (the next retry is a week away).
 $health = @{
     StateFile = [IO.Path]::ChangeExtension($LogFile, ".state.json")
-    Label     = "$(Split-Path -Leaf $parent) backup"
+    EnvName   = Split-Path -Leaf $parent
+    Task      = "backup"
     LogPath   = $LogFile
     AlertAfterMinutes = 0
-    NotifyOk  = $true
 }
 
 try {
@@ -56,7 +56,7 @@ try {
 
     if ($SkipDrive -or -not $RcloneRemote) {
         Log "INFO" "Drive sync skipped (local snapshot only)"
-        Update-TaskHealth @health -Ok $true -Detail "Snapshot $(Split-Path -Leaf $dest) (local only)."
+        Update-TaskHealth @health -Ok $true -OkMessage "backup_ok_local" -Vars @{ snapshot = Split-Path -Leaf $dest }
         exit 0
     }
     $rcArgs = @("sync", $backupDir, "$($RcloneRemote):$DriveDir")
@@ -71,7 +71,7 @@ try {
     if ($code -ne 0) { throw "rclone exit $code : $($out -join ' | ')" }
     if ($out) { Log "WARN" "rclone: $($out -join ' | ')" }
     Log "INFO" "drive sync ok"
-    Update-TaskHealth @health -Ok $true -Detail "Snapshot $(Split-Path -Leaf $dest) uploaded to Drive."
+    Update-TaskHealth @health -Ok $true -OkMessage "backup_ok" -Vars @{ snapshot = Split-Path -Leaf $dest }
     exit 0
 } catch {
     $err = $_.Exception.Message

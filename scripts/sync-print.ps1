@@ -24,7 +24,8 @@ function Log($lvl, $msg) {
 . (Join-Path $PSScriptRoot "notify.ps1")
 $health = @{
     StateFile = [IO.Path]::ChangeExtension($LogFile, ".state.json")
-    Label     = "$(Split-Path -Leaf (Split-Path -Parent $KhoRoot)) print-sync"
+    EnvName   = Split-Path -Leaf (Split-Path -Parent $KhoRoot)
+    Task      = "print-sync"
     LogPath   = $LogFile
     AlertAfterMinutes = $AlertAfterMinutes
 }

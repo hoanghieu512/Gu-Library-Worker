@@ -58,22 +58,62 @@ function Send-Notify([string]$text) {
     }
 }
 
+# User-facing wording (Vietnamese) lives in notify-messages.json next to this file,
+# so it can be edited without touching code. Placeholders: {name}.
+$script:NotifyMessagesPath = Join-Path $PSScriptRoot "notify-messages.json"
+
+function Get-NotifyMessages {
+    Get-Content $script:NotifyMessagesPath -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+
+function Format-NotifyText([string]$template, [hashtable]$vars) {
+    foreach ($k in $vars.Keys) { $template = $template.Replace("{$k}", "$($vars[$k])") }
+    return $template
+}
+
+# Render message $key; if the messages file is missing/broken, fall back to a plain
+# dump so an alert still goes out.
+function Get-NotifyText([string]$key, [hashtable]$vars) {
+    try {
+        $m = Get-NotifyMessages
+        if (-not $m.$key) { throw "no message '$key'" }
+        return Format-NotifyText $m.$key $vars
+    } catch {
+        Log "WARN" "notify messages: $($_.Exception.Message)"
+        return "[$key] " + (($vars.Keys | Sort-Object | ForEach-Object { "${_}: $($vars[$_])" }) -join " | ")
+    }
+}
+
+# Map a raw error to a plain-language reason + fix via the ordered "errors" list
+# (first regex match wins).
+function Get-ErrorExplanation([string]$raw) {
+    try {
+        $m = Get-NotifyMessages
+        foreach ($e in $m.errors) { if ($raw -match $e.match) { return $e } }
+        return $m.error_unknown
+    } catch {
+        return [pscustomobject]@{ reason = "?"; fix = "?" }
+    }
+}
+
 # Track task health in a small state file next to the task log and alert on edges:
-#   - failing continuously for >= $AlertAfterMinutes -> ALERT (repeat every
-#     $RepeatAfterHours while still failing)
-#   - first success after an ALERT                   -> RECOVERED
-#   - $NotifyOk                                     -> OK message on every success
-#     (weekly backup: doubles as a heartbeat — no Sunday message = look at the box)
+#   - failing continuously for >= $AlertAfterMinutes -> "failing" (repeat every
+#     $RepeatAfterHours while still failing), with reason + fix + raw error
+#   - first success after an alert                   -> "recovered"
+#   - $OkMessage set                                 -> that message on every success
+#     (weekly backup: doubles as a heartbeat - no Sunday message = look at the box)
 function Update-TaskHealth {
     param(
         [Parameter(Mandatory = $true)][string]$StateFile,
-        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$EnvName,   # e.g. "GuLibrary-Prod"
+        [Parameter(Mandatory = $true)][string]$Task,      # key under "tasks" in the messages file
         [Parameter(Mandatory = $true)][bool]$Ok,
-        [string]$Detail = "",
+        [string]$Detail = "",                             # raw error when -Ok $false
         [string]$LogPath = "",
         [int]$AlertAfterMinutes = 120,
         [int]$RepeatAfterHours = 24,
-        [switch]$NotifyOk
+        [string]$OkMessage = "",                          # message key to send on every success
+        [hashtable]$Vars = @{}
     )
     try {
         $now = Get-Date
@@ -82,12 +122,18 @@ function Update-TaskHealth {
             $raw = Get-Content $StateFile -Raw -Encoding UTF8 | ConvertFrom-Json
             foreach ($k in @("firstFail", "lastAlert", "lastOk")) { if ($raw.$k) { $st[$k] = [datetime]$raw.$k } }
         }
-        $fmt = "yyyy-MM-dd HH:mm"
+        $fmt = "dd'/'MM'/'yyyy HH:mm"   # quoted: "/" alone means the culture's date separator
+        $taskName = $Task
+        try { $n = (Get-NotifyMessages).tasks.$Task; if ($n) { $taskName = $n } } catch {}
+        $v = @{ env = $EnvName; task = $taskName; now = $now.ToString($fmt); log = $LogPath }
+        foreach ($k in $Vars.Keys) { $v[$k] = $Vars[$k] }
+
         if ($Ok) {
             if ($st.lastAlert) {
-                Send-Notify "[$Label] RECOVERED - ok again at $($now.ToString($fmt)) (failing since $($st.firstFail.ToString($fmt)))." | Out-Null
-            } elseif ($NotifyOk) {
-                Send-Notify "[$Label] OK - $($now.ToString($fmt)). $Detail".TrimEnd() | Out-Null
+                $v.since = $st.firstFail.ToString($fmt)
+                Send-Notify (Get-NotifyText "recovered" $v) | Out-Null
+            } elseif ($OkMessage) {
+                Send-Notify (Get-NotifyText $OkMessage $v) | Out-Null
             }
             $st = @{ firstFail = $null; lastAlert = $null; lastOk = $now }
         } else {
@@ -96,10 +142,13 @@ function Update-TaskHealth {
             $due = if ($st.lastAlert) { ($now - $st.lastAlert).TotalHours -ge $RepeatAfterHours }
                    else { $failingMin -ge $AlertAfterMinutes }
             if ($due) {
-                $last = if ($st.lastOk) { $st.lastOk.ToString($fmt) } else { "unknown" }
-                $sent = Send-Notify ("[$Label] FAILING since $($st.firstFail.ToString($fmt)) " +
-                    "(last ok: $last). Error: $Detail. Log: $LogPath")
-                if ($sent) { $st.lastAlert = $now }
+                $ex = Get-ErrorExplanation $Detail
+                $rawShort = if ($Detail.Length -gt 400) { $Detail.Substring(0, 400) + " ..." } else { $Detail }
+                $v.since = $st.firstFail.ToString($fmt)
+                $v.last_ok = if ($st.lastOk) { $st.lastOk.ToString($fmt) } else {
+                    try { (Get-NotifyMessages).unknown_time } catch { "?" } }
+                $v.reason = $ex.reason; $v.fix = $ex.fix; $v.raw = $rawShort.Trim()
+                if (Send-Notify (Get-NotifyText "failing" $v)) { $st.lastAlert = $now }
             }
         }
         $out = @{}

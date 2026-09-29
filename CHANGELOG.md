@@ -5,6 +5,16 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.18.0] — 2026-09-29 — Tin cảnh báo tiếng Việt, ghi rõ lỗi gì và cách xử lý
+### Added
+- **`scripts/notify-messages.json` — toàn bộ câu chữ gửi qua bot, tiếng Việt, sửa được mà không đụng code.** Template có `{placeholder}`. Backup xong nhắn đúng câu huynh chọn: "Đã backup xong rồi nha huynh!" kèm tên bản snapshot.
+- **Tin lỗi ghi rõ nguyên nhân + cách xử lý + lỗi gốc.** Danh sách `errors` (regex, khớp cái đầu tiên) dịch lỗi thô của rclone/robocopy sang lời thường: mất mạng/TLS/DNS, hết hạn đăng nhập Google (`rclone config reconnect gdrive:`), bị giới hạn tốc độ, Drive đầy, lệch giờ, không có rclone, thiếu config, ổ đầy, robocopy lỗi. Lỗi không khớp mục nào → `error_unknown` + lỗi gốc. Thứ tự có chủ ý: `couldn't fetch token ... tls: handshake failure` là **mạng**, không phải hết hạn đăng nhập (có test).
+### Changed
+- `Update-TaskHealth` nhận `-EnvName` + `-Task` (tên hiển thị lấy từ file message) thay cho `-Label`; `-OkMessage <key>` thay cho `-NotifyOk`. Giờ hiển thị `dd/MM/yyyy HH:mm` (dấu `/` được quote, không phụ thuộc culture của máy).
+- Messages file hỏng hoặc thiếu → vẫn gửi bản dump thô, không mất cảnh báo.
+### Notes
+- Harness bot giả: **19/19 PASS** (thêm T14 lỗi mạng, T15 hết hạn đăng nhập Google), harness rclone 4/4.
+
 ## [0.17.1] — 2026-09-29 — `notify-setup.ps1` chờ tin nhắn thay vì hỏi một lần
 ### Fixed
 - **Setup Zalo báo "No messages found" dù token đúng.** `getUpdates` của Zalo là long poll, và thực tế cho thấy nó chỉ trả về tin **đến trong lúc đang chờ**. Bản cũ chỉ chờ 10 giây một lần, không in phản hồi → tin nhắn gửi trước đó không bao giờ được thấy. Nay script chờ 4 lượt × 30 giây, nhắc "send any message to the bot NOW", và in phản hồi thô hoặc lỗi của Zalo nếu vẫn không có tin. Đã chạy thật trên Prod: lấy được `chat_id`, tin thử tới Zalo.

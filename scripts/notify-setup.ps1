@@ -64,7 +64,7 @@ if (-not $Test -and -not $cfg.ChatId) {
     Write-Host "Saved chat_id $($chats[0].ChatId) (from '$($chats[0].From)')."
 }
 
-if (Send-Notify "[GuLibrary] Test alert from $env:COMPUTERNAME - notifications are working.") {
+if (Send-Notify (Get-NotifyText "test" @{ host = $env:COMPUTERNAME })) {
     Write-Host "Test message sent. Check your phone."
     exit 0
 }

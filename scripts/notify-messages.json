@@ -1,0 +1,63 @@
+{
+    "tasks": {
+        "print-sync": "Đồng bộ thư mục _print lên Google Drive",
+        "backup": "Backup kho hàng tuần"
+    },
+    "failing": "⚠️ [{env}] {task} đang bị lỗi\n• Lỗi từ: {since} (lần chạy được gần nhất: {last_ok})\n• Nguyên nhân: {reason}\n• Cách xử lý: {fix}\n• Lỗi gốc: {raw}\n• Log: {log}",
+    "recovered": "✅ [{env}] {task} đã chạy lại bình thường lúc {now} (bị lỗi từ {since}).",
+    "backup_ok": "Đã backup xong rồi nha huynh! ✅\nBản {snapshot} đã lên Google Drive.",
+    "backup_ok_local": "Đã backup xong rồi nha huynh! ✅\nBản {snapshot} chỉ lưu trên máy, không đẩy lên Drive.",
+    "test": "🔔 Tin thử từ máy {host}: bot cảnh báo Gú's Library đã hoạt động.",
+    "unknown_time": "chưa rõ",
+    "errors": [
+        {
+            "match": "no such host|tls: handshake|dial tcp|i/o timeout|connection (reset|refused)|network is unreachable|context deadline exceeded",
+            "reason": "Mini PC mất mạng hoặc không kết nối được tới Google.",
+            "fix": "Kiểm tra Internet của mini PC. Mạng chập chờn thường tự hết, bot sẽ báo khi chạy lại được."
+        },
+        {
+            "match": "invalid_grant|unauthorized|Error 401|token (has been )?(expired|revoked)|couldn't fetch token",
+            "reason": "Quyền đăng nhập Google Drive của rclone đã hết hạn hoặc bị thu hồi.",
+            "fix": "Trên mini PC chạy: rclone config reconnect gdrive: rồi đăng nhập lại Google trong trình duyệt."
+        },
+        {
+            "match": "rateLimitExceeded|userRateLimitExceeded|403.*rate",
+            "reason": "Google tạm thời giới hạn tốc độ truy cập Drive.",
+            "fix": "Thường tự hết sau vài giờ, không cần làm gì."
+        },
+        {
+            "match": "storageQuotaExceeded|quota exceeded|insufficient storage",
+            "reason": "Google Drive đã hết dung lượng.",
+            "fix": "Dọn bớt Google Drive hoặc nâng gói dung lượng."
+        },
+        {
+            "match": "Time may be set wrong",
+            "reason": "Đồng hồ mini PC bị lệch giờ.",
+            "fix": "Đồng bộ lại giờ trên mini PC (runbook ops, mục 6: lệnh w32tm)."
+        },
+        {
+            "match": "is not recognized|CommandNotFoundException",
+            "reason": "Không tìm thấy rclone trên mini PC.",
+            "fix": "Cài lại rclone hoặc kiểm tra biến PATH."
+        },
+        {
+            "match": "didn't find section in config|config file .*not found|NOTICE: Config file",
+            "reason": "rclone không tìm thấy cấu hình remote gdrive.",
+            "fix": "Chạy rclone config trên mini PC để tạo lại remote gdrive."
+        },
+        {
+            "match": "not enough space|no space left|disk full",
+            "reason": "Ổ đĩa mini PC đã đầy.",
+            "fix": "Dọn bớt ổ D: của mini PC."
+        },
+        {
+            "match": "robocopy failed",
+            "reason": "Lỗi khi chép bản backup ra ổ đĩa (ổ đầy, thiếu quyền, hoặc file đang bị khóa).",
+            "fix": "Kiểm tra dung lượng ổ D: và xem _backup.log trên mini PC."
+        }
+    ],
+    "error_unknown": {
+        "reason": "Lỗi lạ, chưa có trong danh sách lỗi đã biết.",
+        "fix": "Xem lỗi gốc bên dưới và log trên mini PC, gửi đệ để xem giúp."
+    }
+}

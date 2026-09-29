@@ -95,6 +95,15 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   **ngoài repo**): `%APPDATA%\GuLibrary\notify.json`; state cạnh log
   (`_print-sync.state.json`, `_backup.state.json`). Setup/test: `scripts\notify-setup.ps1`
   (`-Test` để gửi thử). Cảnh báo hỏng → log `WARN notify failed`, không bao giờ làm task fail.
+  **Câu chữ tiếng Việt nằm ở `scripts\notify-messages.json` (v0.18.0), không nằm trong code.**
+  Backup xong nhắn "Đã backup xong rồi nha huynh!". Tin lỗi ghi rõ **nguyên nhân + cách xử
+  lý + lỗi gốc**, tra theo danh sách `errors` (regex, khớp cái đầu tiên): mất mạng, hết hạn
+  đăng nhập Google, Drive đầy, bị giới hạn tốc độ, lệch giờ, thiếu rclone/config, ổ đầy,
+  robocopy lỗi. Gặp lỗi lạ (`error_unknown`) → thêm một mục vào `errors`.
+  **Giới hạn 7 ngày (nếu có) không làm bot ngừng hoạt động:** chỉ chặn *bot tự nhắn trước*
+  khi huynh không nhắn gì cho bot quá 7 ngày. Nhắn bot một tin bất kỳ là khung 7 ngày tính
+  lại từ đầu. Phép thử: tin `OK` ngày 11/10/2026 — **không nhắn bot từ 29/09 tới 11/10**
+  để phép thử có ý nghĩa.
   *Chưa chứng minh:* Zalo Bot có chặn tin chủ động sau 7 ngày không tương tác như Zalo OA
   hay không. Tài liệu Zalo Bot không nói; tin `OK` Chủ nhật tuần thứ 2 sau setup chính là
   phép thử. Không tới → đổi `provider` sang `telegram`.
@@ -256,9 +265,9 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
-- Worker **v0.17.1** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+- Worker **v0.18.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6);
-  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29.
+  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29; v0.18.0 tin tiếng Việt ghi rõ lỗi gì + cách xử.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),

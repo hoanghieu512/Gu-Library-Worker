@@ -215,5 +215,11 @@ Setup (as the same Windows user the tasks run as; the token never goes in the re
    and sends a test message. Re-test any time with
    `notify-setup.ps1 -Test`.
 
+Message wording (Vietnamese) lives in `scripts\notify-messages.json`, not in code:
+templates with `{placeholders}`, task names, and an ordered `errors` list that maps
+the raw rclone/robocopy error (first regex match wins) to a plain-language reason +
+fix shown in the `FAILING` message. Unmatched errors get `error_unknown`. Edit the
+wording there freely; add an `errors` entry when a new kind of failure shows up.
+
 No `notify.json` = alerts off, tasks behave as before. Switching Zalo ↔ Telegram is a
 config change only (both use the same `/bot<token>/sendMessage` API shape).
