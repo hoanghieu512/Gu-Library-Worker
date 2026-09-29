@@ -198,6 +198,7 @@ unnoticed in a log:
 |---|---|
 | print-sync | `FAILING` after failing continuously for 2 h (`-AlertAfterMinutes`), a reminder every 24 h while still failing, then `RECOVERED` |
 | backup | `OK` after every weekly run (a heartbeat: **no Sunday message = go look**), `FAILING` on the first failure, then `RECOVERED` |
+| print-sync, after an outage | nothing on the box can alert while it is offline or off, so it reports **on the way back**: `recovered_unreported` when a failure lasted long enough to alert but the alert never got out (box offline), and `downtime` when the previous run is older than 60 min (`-GapAlertMinutes`: power cut, hang, sleep) — the Windows boot time tells "rebooted" from "didn't reboot" |
 
 Alert state lives next to each log (`_print-sync.state.json`, `_backup.state.json`).
 A failed alert is logged as `WARN notify failed` and never changes the task result.

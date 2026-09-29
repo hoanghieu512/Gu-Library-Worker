@@ -96,10 +96,26 @@ function Get-ErrorExplanation([string]$raw) {
     }
 }
 
+# "2 giờ 5 phút" etc., unit words from the messages file.
+function Format-NotifyDuration([TimeSpan]$span) {
+    try { $m = Get-NotifyMessages } catch { return "$([int]$span.TotalMinutes) min" }
+    $vars = @{ d = $span.Days; h = $span.Hours; m = $span.Minutes }
+    $key = if ($span.TotalDays -ge 1) { "duration_d" } elseif ($span.TotalHours -ge 1) { "duration_h" } else { "duration_m" }
+    return Format-NotifyText $m.$key $vars
+}
+
+function Get-LastBootTime {
+    try { return (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).LastBootUpTime } catch { return $null }
+}
+
 # Track task health in a small state file next to the task log and alert on edges:
 #   - failing continuously for >= $AlertAfterMinutes -> "failing" (repeat every
 #     $RepeatAfterHours while still failing), with reason + fix + raw error
 #   - first success after an alert                   -> "recovered"
+#   - first success after a failure long enough to alert, but the alert never got
+#     out (e.g. the box itself was offline)          -> "recovered_unreported"
+#   - $GapAlertMinutes > 0 and the previous run is older than that (power cut, hang,
+#     sleep: nothing ran, so nothing could alert)   -> "downtime" when it runs again
 #   - $OkMessage set                                 -> that message on every success
 #     (weekly backup: doubles as a heartbeat - no Sunday message = look at the box)
 function Update-TaskHealth {
@@ -112,15 +128,19 @@ function Update-TaskHealth {
         [string]$LogPath = "",
         [int]$AlertAfterMinutes = 120,
         [int]$RepeatAfterHours = 24,
+        [int]$GapAlertMinutes = 0,                        # 0 = no downtime detection
         [string]$OkMessage = "",                          # message key to send on every success
         [hashtable]$Vars = @{}
     )
     try {
         $now = Get-Date
-        $st = @{ firstFail = $null; lastAlert = $null; lastOk = $null }
+        $keys = @("firstFail", "lastAlert", "lastOk", "lastRun")
+        $st = @{ lastError = "" }
+        foreach ($k in $keys) { $st[$k] = $null }
         if (Test-Path $StateFile) {
             $raw = Get-Content $StateFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($k in @("firstFail", "lastAlert", "lastOk")) { if ($raw.$k) { $st[$k] = [datetime]$raw.$k } }
+            foreach ($k in $keys) { if ($raw.$k) { $st[$k] = [datetime]$raw.$k } }
+            if ($raw.lastError) { $st.lastError = "$($raw.lastError)" }
         }
         $fmt = "dd'/'MM'/'yyyy HH:mm"   # quoted: "/" alone means the culture's date separator
         $taskName = $Task
@@ -128,16 +148,35 @@ function Update-TaskHealth {
         $v = @{ env = $EnvName; task = $taskName; now = $now.ToString($fmt); log = $LogPath }
         foreach ($k in $Vars.Keys) { $v[$k] = $Vars[$k] }
 
+        if ($GapAlertMinutes -gt 0 -and $st.lastRun -and ($now - $st.lastRun).TotalMinutes -ge $GapAlertMinutes) {
+            $boot = Get-LastBootTime
+            $gv = $v.Clone()
+            $gv.from = $st.lastRun.ToString($fmt)
+            $gv.to = $now.ToString($fmt)
+            $gv.duration = Format-NotifyDuration ($now - $st.lastRun)
+            $causeKey = if ($boot -and $boot -gt $st.lastRun) { "downtime_reboot" } else { "downtime_noreboot" }
+            $gv.boot = if ($boot) { $boot.ToString($fmt) } else { "?" }
+            $gv.cause = Get-NotifyText $causeKey $gv
+            Send-Notify (Get-NotifyText "downtime" $gv) | Out-Null
+        }
+        $st.lastRun = $now
+
         if ($Ok) {
-            if ($st.lastAlert) {
+            if ($st.firstFail) {
                 $v.since = $st.firstFail.ToString($fmt)
-                Send-Notify (Get-NotifyText "recovered" $v) | Out-Null
-            } elseif ($OkMessage) {
-                Send-Notify (Get-NotifyText $OkMessage $v) | Out-Null
+                $v.duration = Format-NotifyDuration ($now - $st.firstFail)
+                if ($st.lastAlert) {
+                    Send-Notify (Get-NotifyText "recovered" $v) | Out-Null
+                } elseif (($now - $st.firstFail).TotalMinutes -ge $AlertAfterMinutes) {
+                    $v.reason = (Get-ErrorExplanation $st.lastError).reason
+                    Send-Notify (Get-NotifyText "recovered_unreported" $v) | Out-Null
+                }
             }
-            $st = @{ firstFail = $null; lastAlert = $null; lastOk = $now }
+            if ($OkMessage -and -not $st.lastAlert) { Send-Notify (Get-NotifyText $OkMessage $v) | Out-Null }
+            $st.firstFail = $null; $st.lastAlert = $null; $st.lastOk = $now; $st.lastError = ""
         } else {
             if (-not $st.firstFail) { $st.firstFail = $now }
+            $st.lastError = $Detail
             $failingMin = ($now - $st.firstFail).TotalMinutes
             $due = if ($st.lastAlert) { ($now - $st.lastAlert).TotalHours -ge $RepeatAfterHours }
                    else { $failingMin -ge $AlertAfterMinutes }
@@ -151,8 +190,9 @@ function Update-TaskHealth {
                 if (Send-Notify (Get-NotifyText "failing" $v)) { $st.lastAlert = $now }
             }
         }
-        $out = @{}
-        foreach ($k in $st.Keys) { $out[$k] = if ($st[$k]) { $st[$k].ToString("o") } else { $null } }
+        $out = [ordered]@{}
+        foreach ($k in $keys) { $out[$k] = if ($st[$k]) { $st[$k].ToString("o") } else { $null } }
+        $out.lastError = $st.lastError
         $out | ConvertTo-Json | Out-File -FilePath $StateFile -Encoding utf8
     } catch {
         Log "WARN" "health state update failed: $($_.Exception.Message)"

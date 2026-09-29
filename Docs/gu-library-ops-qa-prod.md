@@ -100,6 +100,14 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   lý + lỗi gốc**, tra theo danh sách `errors` (regex, khớp cái đầu tiên): mất mạng, hết hạn
   đăng nhập Google, Drive đầy, bị giới hạn tốc độ, lệch giờ, thiếu rclone/config, ổ đầy,
   robocopy lỗi. Gặp lỗi lạ (`error_unknown`) → thêm một mục vào `errors`.
+  **Mất mạng/cúp điện (v0.19.0): mini PC không tự báo được lúc đang sự cố** (chính nó là
+  người gửi tin), nên nó **báo bù khi có lại**: lỗi đủ lâu mà tin cảnh báo không gửi được
+  → `recovered_unreported` ("bị lỗi từ… nhưng không gửi được cảnh báo, nhiều khả năng mất
+  mạng"); lượt chạy trước cách **> 60 phút** → `downtime` ("Mini PC đã ngừng chạy từ… đến…"),
+  kèm giờ khởi động Windows để phân biệt *đã khởi động lại* (cúp điện/treo/Windows Update)
+  với *không khởi động lại* (sleep/task bị tắt). Muốn biết **ngay trong lúc** sự cố thì phải
+  có máy canh từ bên ngoài (healthchecks.io…) — đã cân nhắc, chưa làm vì hàng đợi in chậm
+  vài giờ không sao.
   **Giới hạn 7 ngày (nếu có) không làm bot ngừng hoạt động:** chỉ chặn *bot tự nhắn trước*
   khi huynh không nhắn gì cho bot quá 7 ngày. Nhắn bot một tin bất kỳ là khung 7 ngày tính
   lại từ đầu. Phép thử: tin `OK` ngày 11/10/2026 — **không nhắn bot từ 29/09 tới 11/10**
@@ -265,9 +273,9 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
-- Worker **v0.18.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+- Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6);
-  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29; v0.18.0 tin tiếng Việt ghi rõ lỗi gì + cách xử.
+  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29; v0.18.0 tin tiếng Việt ghi rõ lỗi gì + cách xử; v0.19.0 báo bù sau mất mạng/cúp điện.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),

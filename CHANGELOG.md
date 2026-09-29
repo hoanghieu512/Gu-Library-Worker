@@ -5,6 +5,16 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.19.0] — 2026-09-30 — Báo bù sau khi mất mạng / cúp điện
+### Added
+- **Báo bù khi mini PC có lại.** Cảnh báo đi ra từ chính mini PC, nên lúc máy mất mạng hoặc mất điện thì không gì báo được. Trước bản này, có lại rồi cũng **im lặng hoàn toàn**: lượt chạy được đầu tiên coi như ổn, mà tin `FAILING` chưa từng gửi đi nên cũng không có `RECOVERED`. Câu "bot sẽ báo khi chạy lại được" trong tin lỗi mạng thì chỉ đúng khi tin lỗi đã gửi đi được. Nay:
+  - `recovered_unreported`: lỗi đã đủ lâu để cảnh báo (≥ `-AlertAfterMinutes`) nhưng tin không gửi đi được → khi chạy lại được, báo "bị lỗi từ… (khoảng…) nhưng không gửi được cảnh báo", kèm nguyên nhân của **lỗi cuối** (state lưu thêm `lastError`). Áp cho cả backup.
+  - `downtime` (chỉ print-sync, `-GapAlertMinutes 60`): lượt chạy trước (`lastRun`) cách hơn 60 phút → "Mini PC đã ngừng chạy từ… đến…". Có kèm `LastBootUpTime` của Windows để phân biệt: *đã khởi động lại* (cúp điện, treo phải bật lại, Windows Update) với *không khởi động lại* (sleep, task bị tắt).
+  - Thời lượng hiển thị kiểu "3 giờ 0 phút" / "10 ngày 0 giờ" (`duration_*` trong file message). `recovered` cũng ghi thêm thời lượng.
+### Notes
+- Không phát hiện được **trong lúc** sự cố — cần máy canh bên ngoài (healthchecks.io…); đã cân nhắc và chưa làm vì hàng đợi in chậm vài giờ không sao.
+- Harness: **24/24 PASS** (thêm T16 cảnh báo không gửi được → báo bù kèm lý do + thời lượng, T17/T17b nghỉ 10 ngày qua lần khởi động lại / nghỉ 5 giờ không khởi động lại, T18 nghỉ 30 phút → im, T19 backup không dò khoảng nghỉ). Harness rclone 4/4. Chạy thật trên Prod → `sync ok`, state có `lastRun`.
+
 ## [0.18.0] — 2026-09-29 — Tin cảnh báo tiếng Việt, ghi rõ lỗi gì và cách xử lý
 ### Added
 - **`scripts/notify-messages.json` — toàn bộ câu chữ gửi qua bot, tiếng Việt, sửa được mà không đụng code.** Template có `{placeholder}`. Backup xong nhắn đúng câu huynh chọn: "Đã backup xong rồi nha huynh!" kèm tên bản snapshot.

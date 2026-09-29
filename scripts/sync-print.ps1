@@ -6,13 +6,16 @@
 # Runs headless from a Scheduled Task; on error it logs and exits (the next
 # 15-min run retries) — no in-place retry loop, no popup. If it keeps failing for
 # -AlertAfterMinutes, a chat alert goes out (scripts\notify.ps1), then RECOVERED.
+# A gap of -GapAlertMinutes since the previous run (power cut, hang) is reported
+# when it runs again - nothing on this box can alert while it is down.
 param(
     [Parameter(Mandatory = $true)][string]$KhoRoot,
     [Parameter(Mandatory = $true)][string]$RcloneRemote,   # rclone remote name, e.g. "gdrive"
     [string]$DriveDir = "GuLibrary/Di-in",
     [string]$RcloneConfig = "",                             # optional explicit --config path
     [string]$LogFile = "",
-    [int]$AlertAfterMinutes = 120
+    [int]$AlertAfterMinutes = 120,
+    [int]$GapAlertMinutes = 60     # runs every 15 min; a longer gap = the box was down
 )
 $ErrorActionPreference = "Stop"
 
@@ -28,11 +31,13 @@ $health = @{
     Task      = "print-sync"
     LogPath   = $LogFile
     AlertAfterMinutes = $AlertAfterMinutes
+    GapAlertMinutes   = $GapAlertMinutes
 }
 
 try {
     if (-not (Test-Path $src)) {
         Log "INFO" "no _print/ yet, nothing to sync: $src"
+        Update-TaskHealth @health -Ok $true
         exit 0
     }
     $rcArgs = @("sync", $src, "$($RcloneRemote):$DriveDir")
