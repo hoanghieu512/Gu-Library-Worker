@@ -5,6 +5,10 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.17.1] — 2026-09-29 — `notify-setup.ps1` chờ tin nhắn thay vì hỏi một lần
+### Fixed
+- **Setup Zalo báo "No messages found" dù token đúng.** `getUpdates` của Zalo là long poll, và thực tế cho thấy nó chỉ trả về tin **đến trong lúc đang chờ**. Bản cũ chỉ chờ 10 giây một lần, không in phản hồi → tin nhắn gửi trước đó không bao giờ được thấy. Nay script chờ 4 lượt × 30 giây, nhắc "send any message to the bot NOW", và in phản hồi thô hoặc lỗi của Zalo nếu vẫn không có tin. Đã chạy thật trên Prod: lấy được `chat_id`, tin thử tới Zalo.
+
 ## [0.17.0] — 2026-09-29 — Cảnh báo qua chat (Zalo Bot / Telegram) cho print-sync + backup
 ### Added
 - **`scripts/notify.ps1` — báo qua chat khi task hạ tầng hỏng kéo dài.** Sự cố 09/2026 cho thấy tự-thử-lại thôi là chưa đủ: sync chết 6 ngày mà không ai biết. Nay:

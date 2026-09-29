@@ -256,9 +256,9 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
-- Worker **v0.17.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+- Worker **v0.17.1** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6);
-  v0.17.0 thêm cảnh báo qua Zalo Bot (§3).
+  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),

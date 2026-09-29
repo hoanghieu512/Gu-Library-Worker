@@ -209,8 +209,10 @@ Setup (as the same Windows user the tasks run as; the token never goes in the re
    `@BotFather` → `/newbot`.
 2. `powershell -File scripts\notify-setup.ps1` → creates `%APPDATA%\GuLibrary\notify.json`.
    Put in `"provider": "zalo"` (or `"telegram"`) and the `"token"`.
-3. Send any message to the bot from your phone, then run `notify-setup.ps1` again: it
-   finds your `chat_id`, saves it, and sends a test message. Re-test any time with
+3. Run `notify-setup.ps1` again and, **while it says "Waiting for a message"**, send
+   any message to the bot from your phone (Zalo's `getUpdates` long poll may only
+   deliver messages that arrive while it waits): it finds your `chat_id`, saves it,
+   and sends a test message. Re-test any time with
    `notify-setup.ps1 -Test`.
 
 No `notify.json` = alerts off, tasks behave as before. Switching Zalo ↔ Telegram is a

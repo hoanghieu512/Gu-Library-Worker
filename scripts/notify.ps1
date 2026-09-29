@@ -33,13 +33,13 @@ function Get-NotifyConfig {
 }
 
 # Zalo and Telegram share the same bot API shape: POST <base>/bot<token>/<method>.
-function Invoke-BotApi($cfg, $method, $body) {
+function Invoke-BotApi($cfg, $method, $body, [int]$TimeoutSec = 30) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor
         [Net.SecurityProtocolType]::Tls12
     # PS 5.1 encodes a string body as ISO-8859-1; send UTF-8 bytes explicitly.
     $bytes = [Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Compress))
     return Invoke-RestMethod -Method Post -Uri "$($cfg.Base)/bot$($cfg.Token)/$method" `
-        -ContentType "application/json; charset=utf-8" -Body $bytes -TimeoutSec 30
+        -ContentType "application/json; charset=utf-8" -Body $bytes -TimeoutSec $TimeoutSec
 }
 
 function Send-Notify([string]$text) {
