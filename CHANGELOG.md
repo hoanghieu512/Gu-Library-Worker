@@ -5,6 +5,18 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.17.0] — 2026-09-29 — Cảnh báo qua chat (Zalo Bot / Telegram) cho print-sync + backup
+### Added
+- **`scripts/notify.ps1` — báo qua chat khi task hạ tầng hỏng kéo dài.** Sự cố 09/2026 cho thấy tự-thử-lại thôi là chưa đủ: sync chết 6 ngày mà không ai biết. Nay:
+  - **print-sync:** lỗi liên tục ≥ 2 giờ (`-AlertAfterMinutes`) → `FAILING`, còn lỗi thì nhắc lại mỗi 24 giờ, lần thành công đầu tiên → `RECOVERED`. Lỗi chập chờn vài phút không làm phiền.
+  - **backup:** gửi `OK` **sau mỗi lượt Chủ nhật** làm nhịp tim (**không thấy tin = có chuyện**, kể cả khi kênh cảnh báo chết), lỗi → `FAILING` ngay (lượt thử lại kế tiếp cách một tuần).
+  - Zalo Bot và Telegram cùng dạng API `/bot<token>/sendMessage` → một đoạn code, chọn bằng `provider` trong `%APPDATA%\GuLibrary\notify.json` (**ngoài repo**, chứa token). Không có file = tắt cảnh báo, task chạy y như cũ.
+  - State cạnh log (`_print-sync.state.json`, `_backup.state.json`). Cảnh báo hỏng → `WARN notify failed`, **không bao giờ đổi exit code của task**.
+- **`scripts/notify-setup.ps1`** — tạo file config mẫu, tự tìm `chat_id` qua `getUpdates` (Zalo trả về một object, Telegram trả về mảng; xử lý cả hai), lưu lại, gửi tin thử. `-Test` để thử lại. Không bao giờ in token ra.
+### Notes
+- **Chưa chứng minh:** Zalo Bot có giới hạn gửi tin chủ động (kiểu 7 ngày của Zalo OA) hay không. Tài liệu Zalo Bot không nhắc; vài bài bên thứ ba có vẻ lẫn Bot với OA. Tin `OK` Chủ nhật tuần thứ 2 sau setup chính là phép thử; không tới thì đổi sang `telegram`.
+- Verify: harness với bot API giả (HttpListener) + rclone giả, **17/17 PASS**: ngưỡng 2 giờ, không lặp trong 24 giờ, nhắc lại sau 24 giờ, RECOVERED + reset state, nhịp tim backup, API lỗi 500 không đổi exit code, không config thì im lặng, body UTF-8 tiếng Việt nguyên vẹn, setup lấy được `chat_id` từ dạng trả về của Zalo, token không lộ. Harness rclone cũ vẫn 4/4. Chạy thật print-sync trên Prod → `sync ok`, state ghi đúng.
+
 ## [0.16.1] — 2026-09-27 — Sync `_print/`/backup không còn chết vì một dòng NOTICE của rclone
 ### Fixed
 - **`sync-print.ps1` và `backup.ps1` không coi stderr của rclone là lỗi nữa.** Cả hai đặt `$ErrorActionPreference = "Stop"` rồi gọi `rclone ... 2>&1`. Trên Windows PowerShell 5.1, *bất kỳ* dòng stderr nào cũng thành lỗi dừng script → rclone bị cắt trước khi sync. Kể cả `NOTICE` vô hại cũng vậy, mà rclone in `NOTICE` cả khi chạy thành công. Nay tạm hạ về `Continue` quanh lời gọi rclone và **chỉ phán theo exit code**. Output của rclone khi thành công được ghi thành dòng `WARN rclone: ...` → vẫn nhìn thấy trong log, nhưng không còn chặn sync.

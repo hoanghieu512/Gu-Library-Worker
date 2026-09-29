@@ -88,6 +88,16 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   `gdrive:GuLibrary/Backup`). Register bằng `scripts\register-ops-tasks.ps1` (Admin).
   Log riêng, **NGOÀI kho**: `D:\GuLibrary-Prod\_print-sync.log` và `_backup.log`. rclone
   cài user-scope (winget), remote tên `gdrive`, config OAuth ở `%APPDATA%\rclone\rclone.conf`.
+- **Cảnh báo qua chat (v0.17.0, Zalo Bot — đổi sang Telegram chỉ bằng config):** print-sync
+  lỗi liên tục **≥ 2 giờ** → tin `FAILING`, còn lỗi thì nhắc lại mỗi 24 giờ, hết lỗi →
+  `RECOVERED`. Backup thì **gửi `OK` sau mỗi lượt Chủ nhật** — đây là nhịp tim: **Chủ nhật
+  không thấy tin = có chuyện**, kể cả khi chính kênh cảnh báo đã chết. Config (chứa token,
+  **ngoài repo**): `%APPDATA%\GuLibrary\notify.json`; state cạnh log
+  (`_print-sync.state.json`, `_backup.state.json`). Setup/test: `scripts\notify-setup.ps1`
+  (`-Test` để gửi thử). Cảnh báo hỏng → log `WARN notify failed`, không bao giờ làm task fail.
+  *Chưa chứng minh:* Zalo Bot có chặn tin chủ động sau 7 ngày không tương tác như Zalo OA
+  hay không. Tài liệu Zalo Bot không nói; tin `OK` Chủ nhật tuần thứ 2 sau setup chính là
+  phép thử. Không tới → đổi `provider` sang `telegram`.
 - **Cả 3 Scheduled Task chạy principal S4U** (run-whether-logged-on-or-not) → sống lại
   sau reboot **không cần ai logon**, và headless (session 0, không cửa sổ). Đây chính là
   cái làm "reboot tự dậy" ở §4/§6 thành sự thật. Đổi/thêm task phải giữ S4U; các
@@ -188,6 +198,8 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   không nói lên rclone còn sống. Kiểm `D:\GuLibrary-Prod\_print-sync.log` / `_backup.log`
   và `Get-ScheduledTask GuLibraryPrintSync,GuLibraryBackup | Get-ScheduledTaskInfo |
   Select State,LastTaskResult` (LastTaskResult `0` = OK). Test auth tay: `rclone lsd gdrive:`.
+  Từ v0.17.0 lỗi kéo dài sẽ tự báo qua Zalo (§3). **Không nhận được tin `OK` backup Chủ
+  nhật** = kiểm cả kênh cảnh báo: `scripts\notify-setup.ps1 -Test` + tìm `WARN notify` trong log.
 - **`_print-sync.log` lặp `ERROR sync failed: ... NOTICE: Time may be set wrong` — file
   nằm trong `_print/` mà không lên Drive:** đã gặp thật (2026-09-21 → 09-26, 6 ngày không
   sync được lần nào). **Đồng hồ Atomman lệch**, không phải lỗi Drive/OAuth — `rclone lsl
@@ -244,8 +256,9 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
-- Worker **v0.16.1** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
-  v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6).
+- Worker **v0.17.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
+  v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6);
+  v0.17.0 thêm cảnh báo qua Zalo Bot (§3).
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),

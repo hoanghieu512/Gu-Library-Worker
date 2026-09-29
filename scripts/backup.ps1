@@ -5,6 +5,8 @@
 # Depth of time beyond .stversions + a real offsite copy.
 # Runs headless from a Scheduled Task; on error it logs and exits (next week's run
 # retries) — no in-place retry loop, no popup. `-SkipDrive` = local snapshot only.
+# Every run sends a chat message (scripts\notify.ps1): OK on success — a weekly
+# heartbeat, so a missing Sunday message means "look at the box" — or FAILING.
 param(
     [Parameter(Mandatory = $true)][string]$KhoRoot,
     [string]$RcloneRemote = "",                            # empty or -SkipDrive => local only
@@ -21,6 +23,15 @@ $backupDir = Join-Path $parent "backup"
 if (-not $LogFile) { $LogFile = Join-Path $parent "_backup.log" }
 function Log($lvl, $msg) {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $lvl $msg" | Out-File -FilePath $LogFile -Append -Encoding utf8
+}
+. (Join-Path $PSScriptRoot "notify.ps1")
+# Weekly task: alert on the first failure (the next retry is a week away).
+$health = @{
+    StateFile = [IO.Path]::ChangeExtension($LogFile, ".state.json")
+    Label     = "$(Split-Path -Leaf $parent) backup"
+    LogPath   = $LogFile
+    AlertAfterMinutes = 0
+    NotifyOk  = $true
 }
 
 try {
@@ -45,6 +56,7 @@ try {
 
     if ($SkipDrive -or -not $RcloneRemote) {
         Log "INFO" "Drive sync skipped (local snapshot only)"
+        Update-TaskHealth @health -Ok $true -Detail "Snapshot $(Split-Path -Leaf $dest) (local only)."
         exit 0
     }
     $rcArgs = @("sync", $backupDir, "$($RcloneRemote):$DriveDir")
@@ -59,8 +71,11 @@ try {
     if ($code -ne 0) { throw "rclone exit $code : $($out -join ' | ')" }
     if ($out) { Log "WARN" "rclone: $($out -join ' | ')" }
     Log "INFO" "drive sync ok"
+    Update-TaskHealth @health -Ok $true -Detail "Snapshot $(Split-Path -Leaf $dest) uploaded to Drive."
     exit 0
 } catch {
-    Log "ERROR" "backup failed: $($_.Exception.Message)"
+    $err = $_.Exception.Message
+    Log "ERROR" "backup failed: $err"
+    Update-TaskHealth @health -Ok $false -Detail $err
     exit 1
 }

@@ -4,13 +4,15 @@
 # removed from Drive on the next run too — deletion propagation is intentional,
 # so the Drive folder always equals the current print queue.
 # Runs headless from a Scheduled Task; on error it logs and exits (the next
-# 15-min run retries) — no in-place retry loop, no popup.
+# 15-min run retries) — no in-place retry loop, no popup. If it keeps failing for
+# -AlertAfterMinutes, a chat alert goes out (scripts\notify.ps1), then RECOVERED.
 param(
     [Parameter(Mandatory = $true)][string]$KhoRoot,
     [Parameter(Mandatory = $true)][string]$RcloneRemote,   # rclone remote name, e.g. "gdrive"
     [string]$DriveDir = "GuLibrary/Di-in",
     [string]$RcloneConfig = "",                             # optional explicit --config path
-    [string]$LogFile = ""
+    [string]$LogFile = "",
+    [int]$AlertAfterMinutes = 120
 )
 $ErrorActionPreference = "Stop"
 
@@ -18,6 +20,13 @@ $src = Join-Path $KhoRoot "_print"
 if (-not $LogFile) { $LogFile = Join-Path (Split-Path -Parent $KhoRoot) "_print-sync.log" }
 function Log($lvl, $msg) {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $lvl $msg" | Out-File -FilePath $LogFile -Append -Encoding utf8
+}
+. (Join-Path $PSScriptRoot "notify.ps1")
+$health = @{
+    StateFile = [IO.Path]::ChangeExtension($LogFile, ".state.json")
+    Label     = "$(Split-Path -Leaf (Split-Path -Parent $KhoRoot)) print-sync"
+    LogPath   = $LogFile
+    AlertAfterMinutes = $AlertAfterMinutes
 }
 
 try {
@@ -40,8 +49,11 @@ try {
     if ($code -ne 0) { throw "rclone exit $code : $($out -join ' | ')" }
     if ($out) { Log "WARN" "rclone: $($out -join ' | ')" }
     Log "INFO" "sync ok"
+    Update-TaskHealth @health -Ok $true
     exit 0
 } catch {
-    Log "ERROR" "sync failed: $($_.Exception.Message)"
+    $err = $_.Exception.Message
+    Log "ERROR" "sync failed: $err"
+    Update-TaskHealth @health -Ok $false -Detail $err
     exit 1
 }

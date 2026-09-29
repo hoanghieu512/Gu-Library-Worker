@@ -188,3 +188,30 @@ If the task can't find the config, pass an explicit path to both the register
 script and it forwards it: `-RcloneConfig "C:\path\to\rclone.conf"`. Re-run
 `register-task.ps1` too (it now registers `GuLibraryWorker` as S4U for the same
 reboot-without-logon behavior).
+
+### Chat alerts (Zalo Bot or Telegram)
+
+Both tasks report to a chat bot via `scripts\notify.ps1`, so a dead sync doesn't sit
+unnoticed in a log:
+
+| Task | Message |
+|---|---|
+| print-sync | `FAILING` after failing continuously for 2 h (`-AlertAfterMinutes`), a reminder every 24 h while still failing, then `RECOVERED` |
+| backup | `OK` after every weekly run (a heartbeat: **no Sunday message = go look**), `FAILING` on the first failure, then `RECOVERED` |
+
+Alert state lives next to each log (`_print-sync.state.json`, `_backup.state.json`).
+A failed alert is logged as `WARN notify failed` and never changes the task result.
+
+Setup (as the same Windows user the tasks run as; the token never goes in the repo):
+
+1. Create a bot — **Zalo:** in the Zalo app open the OA "Zalo Bot Manager" → create
+   bot (name must start with "Bot") → the token arrives by message. **Telegram:**
+   `@BotFather` → `/newbot`.
+2. `powershell -File scripts\notify-setup.ps1` → creates `%APPDATA%\GuLibrary\notify.json`.
+   Put in `"provider": "zalo"` (or `"telegram"`) and the `"token"`.
+3. Send any message to the bot from your phone, then run `notify-setup.ps1` again: it
+   finds your `chat_id`, saves it, and sends a test message. Re-test any time with
+   `notify-setup.ps1 -Test`.
+
+No `notify.json` = alerts off, tasks behave as before. Switching Zalo ↔ Telegram is a
+config change only (both use the same `/bot<token>/sendMessage` API shape).
