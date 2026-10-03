@@ -5,6 +5,14 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.20.1] — 2026-10-04 — `vnifix` không đụng chữ OCR
+### Fixed
+- **`vnifix` có thể đổi sai chữ OCR.** v0.20.0 cố ý không giải mã VNI cho chữ OCR (`ocr.clean_text`), nhưng `vnifix` vẫn chạy `normalize_text` (có giải mã VNI) lên **mọi** unit, kể cả `ocr: true`. Đo dry-run trên QA ngay sau khi OCR: vnifix sẽ nhắm **6/12 sidecar OCR** và sửa 7 unit, coi nhiễu OCR là VNI — `(haï)`→`(hạ)`, `uï`→`ụ`, `lIïï`→`lỊï`, `LEøÄ`→`LÈÄ`. Ngoài đổi sai, còn giành file với giai đoạn OCR (giáo trình còn câu đánh dấu nên OCR dựng lại từ cache và ghi đè ngược). Nay `vnifix` bỏ qua unit `ocr: true` ở cả bước chọn đối tượng, chuyển đổi lẫn đếm phần sót; unit OCR được chép nguyên từng trường. Dry-run lại: 0 sidecar OCR bị nhắm.
+### Notes
+- Đã soát công cụ ghi đè còn lại: `reslide` chỉ nhắm `sourceFormat: pptx` + `kind: prose` nên không chạm sidecar OCR (`pdf`); `pipeline` chỉ chuẩn hoá lúc nhập, khi chưa có unit OCR.
+- Bên lề: dry-run cho thấy QA còn **42 tài liệu có chữ thật** vnifix sẽ chuẩn hoá (VNI/NFC) — tồn từ trước vì `--apply` mới chạy trên Prod; Prod = 0. Không thuộc phạm vi bản này.
+- 312 test qua (thêm 2 test: nhiễu OCR giống VNI không bị nhắm; tài liệu lẫn thì unit thường được sửa, unit OCR giữ nguyên).
+
 ## [0.20.0] — 2026-10-04 — OCR trang ảnh (Tesseract, chạy dần có ngân sách)
 ### Added
 - **Giai đoạn OCR sau bước nhập, bật riêng từng kho.** Công tắc là file `<kho>_ocrcache\ocr.json` = `{"enabled": true, "workers": 2}` (thư mục anh em với `kho_archive`, ngoài Syncthing) — **không cần đăng ký lại Scheduled Task**. Không có file = tắt, không ghi log gì. Chỉ xử tài liệu có unit đánh dấu `[trang ảnh scan …` và không có chữ từ nguồn nào khác; không OCR "trang ảnh ẩn" trong PDF có chữ, không OCR slide nền ảnh. Chạy theo thiết kế §6 của spike `Docs/spikes/2026-10-03-ocr-scope-and-engine.md`.

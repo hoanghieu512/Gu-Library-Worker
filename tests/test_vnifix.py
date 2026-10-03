@@ -228,3 +228,33 @@ def test_word_count_survives_composition(kho):
     doc = _sidecar([_slide(_decomposed("một hai ba bốn năm"), 1)])
     out, _ = convert_sidecar(doc)
     assert len(out["units"][0]["text"].split()) == 5
+
+
+# --- OCR units are never re-encoded --------------------------------------------
+
+def _ocr_unit(text, page):
+    return {"type": "paragraph", "label": "", "path": [], "text": text,
+            "page": page, "bbox": [10.0, 20.0, 30.0, 40.0], "ocr": True}
+
+
+def test_ocr_noise_that_looks_like_vni_is_not_a_target(kho):
+    # real OCR output from the QA run: stray Latin-1 letters VNI would "decode"
+    doc = _sidecar([_ocr_unit("tách rời (haï) ở đoạn giữa", 1),
+                    _ocr_unit("Tổn thương LEøÄ vùng cổ", 2)], kind="prose", page_count=2)
+    doc["sourceFormat"] = "pdf"
+    assert needs_vni_fix(doc) is False
+    p = _place(kho / "Môn A", "scan", doc)
+    before = p.read_text(encoding="utf-8")
+    report = vnifix_kho(kho, apply=True)
+    assert report.targets == 0
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_mixed_document_fixes_text_units_and_leaves_ocr_units_alone():
+    doc = _sidecar([_slide("Khaùi nieäm vaø yù nghóa cuûa QÑHP", 1),
+                    _ocr_unit("chữ OCR có nhiễu uï", 2)], page_count=2)
+    new, changed = convert_sidecar(doc)
+    assert changed == 1
+    assert new["units"][0]["text"] == "Khái niệm và ý nghĩa của QĐHP"
+    assert new["units"][1] == doc["units"][1]          # byte-for-byte, flag kept
+    assert validate_sidecar(new) == []

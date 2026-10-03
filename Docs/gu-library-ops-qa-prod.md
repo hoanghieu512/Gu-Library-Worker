@@ -6,7 +6,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
   bắt kịp main** · cập nhật 2026-09-08
 
-- **Worker** *(Atomman ghi dòng này)*: v0.20.0 (OCR trang ảnh: QA bật, Prod CHƯA) · cập nhật 2026-10-04
+- **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA bật, Prod CHƯA) · cập nhật 2026-10-04
 
 > **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
 > với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
@@ -132,7 +132,8 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   thể xê dịch. Từ chối ghi nếu làm rỗng unit, đổi số từ, đổi danh sách `page`, hoặc
   `validate_sidecar` bẩn. Backup vào `_sidecar_backup_vni/` (**tách khỏi**
   `_sidecar_backup/` của `reslide` — thư mục đó giữ bản trước-khi-gom-slide, không được
-  đè). Idempotent.
+  đè). Idempotent. **Bỏ qua mọi unit `ocr: true` (v0.20.1)** — chữ OCR luôn là Unicode,
+  giải mã VNI lên nhiễu OCR chỉ đổi nhiễu này thành nhiễu khác.
 - **Hai task hạ tầng riêng (v0.11.0 — ĐANG CHẠY, độc lập với `GuLibraryWorker`, chết
   độc lập):** `GuLibraryPrintSync` (mirror `_print/` Prod → `gdrive:GuLibrary/Di-in`
   mỗi ~15 phút) và `GuLibraryBackup` (CN 03:00 — robocopy snapshot → `rclone sync` lên

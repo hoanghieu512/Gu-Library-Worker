@@ -15,6 +15,11 @@ Only `text` changes. `page`, `label`, `bbox`, `path` and the document metadata
 are carried across untouched, so the page anchors the app jumps to cannot move.
 A conversion that would drop or split a word, empty a unit, or produce an
 invalid sidecar is refused and the document left exactly as it was.
+
+Units marked `"ocr": true` are never touched: recognised text is Unicode by
+construction, and stray Latin-1 letters in OCR noise (`haï`, `LEøÄ`) would
+otherwise be "decoded" as VNI into different noise. The OCR stage owns those
+units (`ocr.clean_text`).
 """
 from __future__ import annotations
 
@@ -38,6 +43,10 @@ log = logging.getLogger("gu_library_worker")
 BACKUP_DIRNAME = "_sidecar_backup_vni"
 
 
+def _is_ocr(unit: dict) -> bool:
+    return unit.get("ocr") is True
+
+
 @dataclass
 class VniFixReport:
     targets: int = 0          # sidecars whose text normalizing would change
@@ -59,13 +68,13 @@ def needs_text_fix(data: dict) -> bool:
     only stops a document that needs *only* NFC from being overlooked.
     """
     return any(normalize_text(u.get("text") or "") != (u.get("text") or "")
-               for u in (data.get("units") or []))
+               for u in (data.get("units") or []) if not _is_ocr(u))
 
 
 def needs_vni_fix(data: dict) -> bool:
     """True when any unit holds a sequence only VNI encoding produces."""
     return any(has_vni_evidence(u.get("text") or "")
-               for u in (data.get("units") or []))
+               for u in (data.get("units") or []) if not _is_ocr(u))
 
 
 def convert_sidecar(data: dict) -> tuple[dict, int] | None:
@@ -83,6 +92,9 @@ def convert_sidecar(data: dict) -> tuple[dict, int] | None:
     new_units: list[dict] = []
     changed = 0
     for u in units:
+        if _is_ocr(u):
+            new_units.append(dict(u))                # OCR text is not ours to re-encode
+            continue
         old_text = u.get("text") or ""
         new_text = normalize_text(old_text)
         if not new_text.strip():
@@ -135,7 +147,7 @@ def vnifix_kho(kho_root, *, apply: bool = False) -> VniFixReport:
         # Text the PDF extractor had already scrambled (a character separated
         # from its own vowel by a line break) can't be decoded by anything;
         # count it so the residue is visible rather than silently shipped.
-        residue = sum(1 for u in new["units"] if looks_vni(u["text"]))
+        residue = sum(1 for u in new["units"] if not _is_ocr(u) and looks_vni(u["text"]))
         report.rewritten += 1
         report.units_changed += changed
         report.units_still_vni += residue

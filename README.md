@@ -195,7 +195,9 @@ so page anchors cannot move. A conversion that would empty a unit, change a
 unit's word count, move a page, or produce an invalid sidecar is refused and the
 document left alone. The previous sidecar is copied to
 `<kho>_archive/_sidecar_backup_vni/` — deliberately *not* `_sidecar_backup/`,
-which holds `reslide`'s pre-slide originals. Re-running is a no-op.
+which holds `reslide`'s pre-slide originals. Re-running is a no-op. Units marked
+`"ocr": true` are skipped entirely: OCR text is Unicode by construction, and
+stray Latin-1 letters in OCR noise would otherwise be "decoded" as VNI.
 
 **Deciding what is VNI is the hard part, and two obvious rules are both wrong.**
 A vowel followed by a tone mark (`aù`) looks like proof, but Vietnamese Unicode
