@@ -1,8 +1,18 @@
 # Gú's Library — Ghi chú vận hành QA / Prod
 
-*Cập nhật 2026-10-03, trạng thái: app v1.38.0 · worker v0.19.0. **Bản hợp nhất** —
-nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn Obsidian. File này
-dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
+***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
+Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
+
+- **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
+  bắt kịp main** · cập nhật 2026-09-08
+
+- **Worker** *(Atomman ghi dòng này)*: v0.19.0 · cập nhật 2026-10-03
+
+> **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
+> với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
+> `scripts/sync-ops-doc.sh --publish` (commit ở đây + đẩy CÙNG bản sang repo kia + chép sang
+> Obsidian nếu máy có cấu hình). Hai dòng trạng thái trên và §8.1/§8.2 mỗi máy chỉ ghi phần
+> của mình — hai bên sửa cách nhau ít nhất một dòng thì git tự gộp, không ra conflict.
 
 > **Prod đã có người dùng thật.** Gú đang dùng hằng ngày trên máy của Gú. Mọi thay đổi
 > chạm Prod từ đây tính là chạm vào công cụ học của một người thật, không còn là sân tập.
@@ -22,13 +32,32 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 |---|---|---|
 | Folder trên Atomman | `D:\GuLibrary\kho` | `D:\GuLibrary-Prod\kho` |
 | Folder-ID Syncthing | `gu-library-kho` | `gu-library-kho-prod` |
-| Máy trong cụm | Z Flip 4 · S22 Ultra · Z Fold 3 (máy test) | Galaxy Tab S9 (SM-X710) · S20 FE · Z Flip 6 (máy Gú) |
+| Máy trong cụm | Z Flip 4 · S22 Ultra · Z Fold 3 · **UBS1** · **dGen1** (máy test) | Galaxy Tab S9 (SM-X710) · S20 FE · Z Flip 6 (máy Gú) |
 | Archive nguồn + backup sidecar | sibling ngoài cây sync (`…_archive\`, chi tiết §3) | sibling ngoài cây sync (`…_archive\`, chi tiết §3) |
 
 - Tách ở **cấp cha** (`GuLibrary-Prod\kho`, không phải `kho-prod` cạnh nhau) — cô lập
   `.stversions/`, `_worker.log`, archive; worker trỏ rạch ròi, khó copy nhầm.
-- Atomman = anchor node 24/7 (Syncthing chạy dạng Windows service). Android dùng
+- **Atomman** = anchor node 24/7 (Syncthing chạy dạng Windows service). Android dùng
   Syncthing-Fork (Catfriend1).
+  **ĐỔI TÊN 05/09: trước gọi là "mini PC", nay dùng đúng tên máy — Atomman.** Đã đổi trong 5 tài
+  liệu sống (`design-spec`, `syncthing-setup`, `phase1-build-brief`, ops doc này,
+  `worker-tmp-normalization`). **CỐ Ý KHÔNG đổi:** `CHANGELOG.md` và `Docs/superpowers/plans/*`
+  (bản ghi lịch sử, giữ nguyên chữ lúc viết), và **định danh trong code** (`MINIPC`, `minipcId`,
+  `KEY_MINIPC`) — riêng `st_minipc_id` là **khoá lưu Preferences**, đổi là mọi máy mất cấu hình
+  Syncthing đã lưu. Chuỗi hiện trên màn hình app vẫn đang là "mini PC", chưa đổi.
+- **Hai máy test dùng luân phiên từ 05/09 — KHÁC LỚP NHAU, số đo KHÔNG suy sang nhau được:**
+
+  | | UBS1 | dGen1 |
+  |---|---|---|
+  | serial | `UBS1240902002011` | `dG1408299JIT` |
+  | model | Unisoc T616 (ums9230) | alps `k6789v1_64` (MediaTek) |
+  | Android | 14 | **15** |
+  | RAM | **5,89 GB** | **7,59 GB** |
+  | Màn | 720×1600 @320dpi (360dp dọc) | **720×720 VUÔNG** @240dpi (**480×480 dp**) |
+  | WebView | `com.google.android.webview` (bản mới) | **`com.android.webview` 124 (AOSP, cũ)** |
+
+  → **Đo bộ nhớ phải ghi rõ máy nào.** Mọi số v1.37/v1.38 trước 05/09 đều là UBS1.
+  → dGen1 là máy DUY NHẤT có màn **vuông** — ca bố cục không máy nào khác phủ được.
 
 ## 3. Worker
 
@@ -194,6 +223,15 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   lúc build** (build.gradle đọc `package.json`), không đọc runtime → cài lại một APK dựng
   *trước* lúc bump sẽ vẫn hiện số cũ dù code mới. Không phải bug: dựng LẠI `assembleRelease`
   sau khi bump rồi cài đè (đã gặp thật v1.16.0→v1.17.0).
+- **Biến thể NGUY HIỂM HƠN của cùng bẫy đó — hai APK KHÁC NHAU cùng mang một `versionName`
+  (gặp thật 07/09):** sửa code sau khi đã dựng APK, rồi merge + tag mà **quên dựng lại APK**.
+  Tag `v1.39.0` trên main CÓ chứa thay đổi, nhưng file APK nằm trên đĩa thì dựng *trước* đó và
+  vẫn tên `Gu-Library-1.39.0-release.apk` → cài lên máy thấy **thiếu hẳn thay đổi vừa merge**,
+  mà nhìn số version thì không tài nào biết. Ở đây là hàng "Đo hiệu năng (debug)" đã gỡ trong
+  code nhưng vẫn hiện trên máy.
+  **Luật giữ về sau: sửa code sau khi dựng APK thì BUMP version rồi dựng lại, đừng dựng đè cùng
+  số.** Cách kiểm không cần cài: `unzip -p <apk> assets/public/assets/index-*.js | grep -c "<chuỗi>"`
+  — soi thẳng chuỗi mong đợi trong bundle của chính file APK sắp đưa đi.
 - **File kẹt ⏳ lâu:** mở `<kho>\_worker.log`. File đuôi lạ/tmp kẹt lại là *tín hiệu
   dọn tay theo thiết kế*, worker không tự xóa. Segment tiền tố độc → worker route về
   "Chưa phân loại" + WARNING trong log.
@@ -201,7 +239,11 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   "Chọn file từ máy" + share từ Gallery), nhưng đóng ảnh→PDF là việc của **worker**. Env
   nào app nhận ảnh thì worker env đó **PHẢI biết xử ảnh TRƯỚC**, không thì ảnh nằm ⏳ vô
   hạn. Thứ tự deploy bắt buộc: worker-image lên Prod trước → verify → rồi mới đẩy app
-  v1.19.0 sang máy Gú. (App whitelist đúng jpg/png/webp — HEIC/gif KHÔNG nhận, cố ý.)
+  v1.19.0 sang máy Gú. **Lệch whitelist có chủ ý:** app CHỈ gửi `jpg/jpeg/png/webp`;
+  worker (v0.12.0) xử được TẬP RỘNG hơn (thêm `gif/bmp/tif/tiff`) nhưng app cố tình chưa
+  mở các loại đó (chọn hẹp cho chắc) → không phải bug. HEIC thì **cả app lẫn worker đều
+  không nhận** (Samsung để "high efficiency" mới ra HEIC — Gú giữ JPG là an toàn). Cần
+  nhập gif/bmp/tif thì chỉ việc nới whitelist app (worker sẵn sàng) — beat nhỏ.
 - **Thấy folder `_inbox (1)`, `_inbox (2)`… ở gốc kho, hoặc danh sách môn RỖNG dù kho
   đầy:** đã gặp thật (2026-07-13, Flip 4, khi nhập nhiều ảnh liên tiếp). Gốc: `_inbox` bị
   worker/Syncthing xóa+tạo lại giữa loạt import → cache SAF stale → app tạo trùng
@@ -212,6 +254,12 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   OS kẹt index tạm thời → **reboot máy** dọn (data còn nguyên). File trong `_inbox (k)`
   mồ côi (máy chưa lên v1.19.0) — worker chỉ quét `_inbox` → **dồn tay về `_inbox` rồi
   xóa folder rác** (giữ nguyên tiền tố `[Môn]`).
+- **Thấy folder `<tên>-gu-case-<số>` ở trong môn/thư mục:** residue rất hiếm của đổi
+  tên case-only (v1.25.1 đổi 2 bước qua tên tạm để né `(1)` — xem CHANGELOG). Chỉ đọng
+  nếu app bị kill GIỮA hai bước rename. An toàn: đổi tên tay folder đó về tên đích (bỏ
+  đuôi `-gu-case-<số>`). Không mất data — con bên trong còn nguyên.
+- **Đổi tên môn/thư mục ra `… (1)`:** đã fix ở app v1.25.1 (đổi tên sang biến thể chỉ
+  khác hoa/thường của chính nó). Nếu còn thấy `(1)` sau đổi tên → máy đó chưa lên v1.25.1.
 - **Sync đứng, thấy file mồ côi `.syncthing.*.tmp`:** đã gặp thật trên Flip 4.
   **Không phải bug app/worker, không có fix code.** Syncthing tự hòa giải sau vài vòng.
   Chỉ theo dõi xem có tái diễn thành mẫu hình lặp lại hay không; nếu chỉ lẻ tẻ thì bỏ qua.
@@ -284,10 +332,330 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
 
 ## 8. Trạng thái mốc & việc còn treo
 
-- App **v1.38.0** trên main, sạch, chỉ còn nhánh `main` — **tìm kiếm toàn văn** đã merge,
-  tag, nghiệm thu trên hai máy test. Search ăn thẳng `units[]` trong sidecar: mỗi đơn vị
-  là một kết quả tra được, hiện kèm `label` (vd "Điều 5", "Slide 12") và `page`, chạm là
-  mở PDF đúng trang.
+*Chia ba phần để hai máy không ghi đè lên nhau: Mac ghi §8.1, Atomman ghi §8.2.*
+
+### 8.1 App *(Mac ghi)*
+
+- App **v1.36.0** trên main, sạch, chỉ còn nhánh `main` (tag `v1.36.0`). Từ v1.19.0
+  đến nay là **polish UI/UX + read-path thuần, KHÔNG coupling worker/hạ tầng mới** — deploy độc
+  lập, không chờ worker: v1.20 breadcrumb bấm-nhảy-tầng · v1.21 ô nhập floating-label tự-vẽ (đồng
+  nhất mọi WebView) · **M10 folder-level ĐÓNG TRỌN**: v1.22 đổi tên + v1.23 xóa môn/thư mục (đệ
+  quy, chặn pending) + v1.23.1 empty-state panda khi thư mục bị máy khác xóa + v1.25.1 fix đổi-tên
+  case-only ra `(1)` · v1.24 định vị cây sâu (phụ đề "Đang đọc dở" rút gọn `…` + avatar ô-màu-thuần) ·
+  v1.25.0 toast phản hồi cho MỌI thao tác đơn (giọng Gú) · **v1.26.0 đổi read-path PDF** (base64→fetch
+  qua WebViewLocalServer, stream content-URI trong renderer → mở được file nặng ~64MB, trả nợ OOM
+  v1.4.1; guard `probeReadable` + body-rỗng → panda thay vì crash khi file move/xóa) · **v1.27.0
+  split-screen Viewer MVP** (chia 50/50 trên/dưới, pane trên giữ trang + ghi reading-state, pane dưới
+  tra cứu không ghi) · **v1.28.0 redesign Trang chủ "Tủ sách luật"** (kệ gỗ 3D + gáy da tint màu môn +
+  nhấn-giữ-rút-sách menu + Book Press "Chưa phân loại" + card đọc-dở bìa-da mirror màu môn + "Đi in"
+  xấp-giấy — reskin lớp trình bày, KHÔNG đụng reading-state/print/sync) · **v1.28.1 bảng màu
+  môn thay trọn 6 màu cũ → 8 màu "sách luật"** (đa dạng hue, chỉ đụng `MON_PALETTE`; môn đã gán
+  màu giữ nguyên vì `meta.color` explicit thắng) · **v1.28.2 fix Book Press tràn khung tủ**
+  (nhồi kệ phải dùng bề rộng RENDER thật của press, không phải `spineWidth`).
+  **TUYẾN B mở (áp tông nâu-giấy lên các màn còn lại, reskin thuần — KHÔNG đổi hành vi):**
+  **v1.29.0 = B1** lớp hàng dùng chung `KhoRow` (Đi in · Trong Môn · sheet chọn đích cùng ăn) +
+  vuốt trái bỏ chữ còn icon+màu (in nâu · xóa đỏ-đất · ⋯ xanh rêu) + màn Đi in có swatch màu môn
+  ở header nhóm. **v1.30.0 = B2a** vỏ modal/sheet dùng chung (`GuSheet` + `SheetAction[]`, `GuDialog`)
+  — dialog xóa · đổi tên · sheet ⋯ · đổi màu cùng một vỏ. **v1.31.0 = B2b(+B2b.1)** Trong Môn:
+  breadcrumb ƯU TIÊN tầng đang đứng (cha co trước, chật thì dồn vào `…`; KHÔNG hạ cỡ chữ) + chế độ
+  chọn-nhiều (thư mục mờ, không bấm) + hàng thư mục có vạch màu/icon-ô-nền/dòng phụ đếm con trực
+  tiếp. **v1.32.0 = B2c** "Chọn hết / Bỏ chọn hết" (MỘT nút đổi nhãn; phạm vi = ĐÚNG tập đang hiển
+  thị ở tầng đang đứng, **KHÔNG đệ quy**, không gồm thư mục). **v1.33.0 = B3(+B3.1)** màn Thêm ·
+  sheet chọn môn–thư mục (cưỡi `GuSheet`, nút lùi vào `startSlot`) · màn Tìm · modal Sync · màn Cài
+  đặt lên thẻ-rời. **v1.34.0 = B4a** Viewer RESKIN (header · thanh điều khiển + vạch tiến độ · vỏ
+  split · icon chia-đôi đổi theo chế độ) — KHÔNG đụng read-path, KHÔNG đụng logic split.
+  **Hai beat cuối là TÍNH NĂNG chứ không phải reskin:** **v1.35.0 = B4b** đổi tài liệu ngay trong
+  split (nút "Đổi" trên vạch chia → `DocPicker` sẵn có; TUẦN TỰ: nhả tài liệu cũ HẲN rồi mới nạp
+  mới → đỉnh vẫn 2 tài liệu, không phải 3). **v1.36.0 = B4c** thanh chia KÉO ĐƯỢC (Gú xác nhận 50/50 chưa đủ)
+  + tay-nắm (B4a CỐ Ý chưa vẽ để khỏi hứa cử chỉ chưa có) — mỗi pane luôn ≥132px, tỉ lệ nhớ trong
+  phiên và sống qua thao tác "Đổi", CỐ Ý không nhớ qua lần mở app sau. Kéo mượt nhờ gói cập nhật
+  bố cục trong `requestAnimationFrame` (đo Flip 4, giáo trình 398 trang, kéo 30s: **687 khung ·
+  giật 2.18% · p95 10ms**). Sau QA huynh: vạch mỏng lại **38→22px**, bỏ tên tài liệu khỏi vạch
+  (tên là thứ đệ tự thêm ở B4b, không ai yêu cầu), **dày bằng nhau ở cả hai trạng thái**. Sàn 22px
+  là theo VÙNG CHẠM để kéo, không theo chữ — nên KHÔNG đổi chữ "Đổi" sang icon (và
+  `swapHorizontalOutline` đã có nghĩa "Chuyển file" ở chỗ khác trong app).
+  **→ TUYẾN B KHÉP TRỌN.** Bảy beat liên tiếp (B1→B4c) không phải sửa ba lớp nền
+  `KhoRow`/`GuSheet`/`GuDialog` và không đụng read-path — bằng chứng lớp nền chốt đúng ở v1.29.0.
+  - **Còn treo sau B4c, CHƯA quy trách nhiệm:** **xoay ngang → pane trên hiện TRẮNG** (khung không
+    vỡ; xoay về dọc thì nội dung trở lại). `PdfView` không bị B4c đụng (diff rỗng) và **layout
+    ngang/xoay vốn nằm trong danh sách "CHƯA làm" từ v1.27.0** — đệ KHÔNG đối chứng với v1.34.0
+    nên không khẳng định là hồi quy hay có sẵn. Muốn kết luận thì phải cài lại v1.34.0 và thử xoay.
+  - **Feedback Gú đã chốt (khỏi hỏi lại):** pane trên ĐỌC / pane dưới TRA — giữ nguyên như app,
+    giả định ban đầu đúng.
+  - **CÁCH ĐO BỘ NHỚ CHO VIEWER (bắt buộc nhớ):** WebView chạy renderer ở **TIẾN TRÌNH RIÊNG**
+    (`…:sandboxed_process0`) — chỗ chứa bytes PDF + canvas. `dumpsys meminfo com.gulibrary.app`
+    CHỈ đếm tiến trình chính nên **thiếu 5–6 lần**. Luôn cộng cả hai: lấy pid renderer bằng
+    `ps -A | grep sandboxed_process0` rồi `dumpsys meminfo <pid>`.
+  - **Số nền máy 6GB @ v1.35.0** (chính+renderer): mở app 200 · đọc đơn 61MB 422 · split 61+20MB
+    504 · sau 10 lần đổi 431 MB. **Ca nặng nhất kho** (trên 214.5MB + dưới 67MB) đỉnh **829 MB**,
+    không crash, máy `status normal`. **Trôi ~0.68 MB/lần đổi (20 lần: +13 MB), TOÀN BỘ ở renderer;
+    đã quy trách nhiệm: luồng CŨ cũng trôi cùng dải → là cache Chromium/pdf.js CÓ SẴN, không phải
+    rò do B4b.** Còn treo theo dõi: rời Viewer về Home giữ ~135 MB so với lúc mới mở.
+  - **File mồi test CÓ CHỦ ĐÍCH (đừng "sửa"):** `Chưa phân loại/Giám định pháp y, tâm thần.pdf`
+    (scan JPEG2000/JPX) — huynh cố ý để trong kho QA để test ca pdf.js render TRẮNG. Thấy pane
+    trắng với file này là ĐÚNG, không phải bug.
+  - **CHỜ XÁC NHẬN CÓ DÙNG — "Chọn hết / Bỏ chọn hết" (v1.32.0):** đây là mục **DUY NHẤT** của cả
+    Tuyến B **không truy được về friction quan sát từ Gú** — nó đến từ prototype, không từ việc Gú
+    kêu. Cần theo dõi vài tuần: nếu Gú không đụng thì **GỠ**, đừng để tồn như tính năng chết.
+    *Đường gỡ sạch (không gì khác phụ thuộc):* xoá `src/storage/selectAll.ts` + `selectAll.test.ts`,
+    xoá khối `IonButtons slot="end"` trong nhánh `selectMode` của header `src/pages/FolderPage.tsx`,
+    và 3 biến `visibleDocUris`/`allSelected`/`onToggleAll`. Chế độ chọn-nhiều (B2b) KHÔNG bị ảnh hưởng.
+  - **Nợ `className="ion-padding"` VÔ HIỆU trên `IonContent` (bài học v1.10.0) — ĐÃ ĐÓNG SỔ ở
+    v1.33.0**: ba file cuối (`SyncSettings`, `SettingsPage`, `PerfDebugModal`) đã đổi sang biến
+    `--padding-*`; grep toàn `src/` nay sạch. **Luật giữ về sau: KHÔNG dùng `className="ion-padding"`
+    trên `IonContent` — nó không có tác dụng; luôn set qua biến `--padding-*`.** **Nav chữ-bên-icon = won't-do
+  (đóng sổ).** **v1.19.0 image-coupling ĐÃ GIẢI:** worker Prod v0.13.0 xử ảnh→PDF từ v0.12.0 → app
+  nhận-ảnh lên Prod được. *Bản APK thực trên tablet Gú (Prod): huynh xác nhận đang ở version nào —
+  doc không tự suy.*
+  - **Gate S20 FE — ĐÃ ĐO 2026-07-28 (buổi đo trên máy Prod của Gú, app v1.35.0): PASS.**
+    *Máy:* `RF8RA06HA9Z` **SM-G780G**, **RAM 7.44 GB**, **1080×2400 @480dpi**, kho Prod thật (107 PDF).
+    *Cách đo:* CC chỉ-đọc, huynh thao tác máy; PSS = **tiến trình chính + renderer**, lấy mẫu 3s/lần.
+    - **Mốc nền S20 FE-class** (trung vị): Home mới mở **185** · đọc đơn 61MB **401** ·
+      split 61+20MB **456** · sau 1 lần đổi **456** · sau 10 lần đổi **436 MB**.
+    - **Ca nặng nhất kho** (pane trên **214.5 MB** + pane dưới **61 MB**): **đỉnh 868.3 MB**;
+      đổi sang 35MB còn 839. **Không crash, PID không đổi suốt 640s**, máy `status normal`
+      (Free RAM 3.6 GB). Nhả-trước-nạp-sau vẫn đúng ở ca nặng: bấm "Đổi" nhả **68.9 MB**.
+    - **10 lượt đổi: CHỮNG, không leo thang.** Plateau đầu 455.9 → cuối 435.6 = **−20.3 MB**
+      (chỉ 3/7 lượt tăng). *Cạm bẫy đã vấp:* hồi quy thô trên cả pha ra +7.33 MB/phút trông như
+      "leo đều" — do MỘT đỉnh nhọn kéo lên, **phải cắt theo từng lượt** mới đọc đúng.
+    - *Đỉnh nhọn chưa giải thích được (ghi nguyên trạng):* một lượt vọt 709 MB trong ~15s rồi tự
+      nhả 225 MB; tài liệu tra cứu lượt đó chỉ **0.3 MB** nên KHÔNG do nó. Nghi pane trên (giáo
+      trình 398 trang) dồn raster khi cuộn nhanh — chưa đủ dữ kiện khẳng định.
+  - **CHỖ VÊNH ĐÃ GỠ — gate cũ ghi "S20 FE-class (res cao + **6GB**)" là SAI tiền đề:** S20 FE của
+    Gú là **bản 8GB** (đo được 7.44 GB). Vậy buổi này đóng được ô **"res cao + 8GB"**, KHÔNG phải ô
+    "res cao + 6GB". Ô còn trống trên giấy: **1080×2400 + 6GB** — nhưng **rủi ro đã bị chặn bằng số**:
+    gấp **2.25× số điểm ảnh** (720×1600 → 1080×2400) mà đỉnh chỉ tăng **829 → 868 MB (+4.7%)**, tức
+    ~870 MB trên máy 6GB vẫn là ~14% RAM. **Và quan trọng hơn: mục đích của gate là bảo vệ Gú —
+    máy Gú đang dùng CHÍNH LÀ máy vừa đo và nó PASS.** Đề xuất: đóng gate; nếu sau này có máy
+    1080×2400 + 6GB thì đo bổ sung cho đủ ô, không phải để chặn ship.
+  - **"Giữ lại sau phiên nặng" — ĐÃ GIẢI, KHÔNG PHẢI RÒ.** Hiện tượng: rời Viewer về Home vẫn cao
+    hơn lúc mới mở (máy 6GB 200→336 = +135 MB; S20 FE **185→506 = +321 MB**). **Cách chứng minh
+    (chỉ-đọc, bằng `dumpsys meminfo <pid renderer>` mục App Summary):**
+    (1) **Java Heap 0.7 MB · Native Heap 0.8 MB · Graphics 0** → app KHÔNG ôm đối tượng;
+    (2) **`TOTAL SWAP PSS` nhảy 3.1 MB (lúc split) → 231.3 MB (lúc về Home)** → OS đã nén/đẩy
+    ~228 MB sang **zram** ngay khi rời Viewer, tức đang được thu hồi;
+    (3) **RSS 238.6 MB < PSS 376.8 MB** → phần lớn PSS đang kế toán cả trang đã swap, KHÔNG nằm
+    trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
+    → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
+    đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.39.2 — tra nhiều chữ BẮT BUỘC LIỀN NHAU (Gú báo qua huynh).** Tra "là công dân" ra cả
+  *"Lỗi kỹ thuật **LÀ** lỗi do sai sót… **ĐÁNH** máy… văn bản **CÔNG** chứng"*. Hai lỗi khác nhau
+  chồng lên nhau:
+  1. **`search()` là AND thuần** — đoạn nào chứa ĐỦ các chữ ở BẤT KỲ đâu là khớp. Cụm liền nhau
+     chỉ được ưu tiên khi xếp hạng, không phải điều kiện.
+  2. **Gõ CÓ DẤU không thu hẹp được gì** — index chỉ lưu dạng bỏ dấu, mà `fold("công")` và
+     `fold("cộng")` ra **cùng** chuỗi `cong`; `fold("đánh")` = `danh` nên khớp tiền tố `dan`.
+     Đây là hệ quả cố hữu của tra-không-dấu, không sửa riêng được.
+  → Sửa (1) thì (2) tự hết phần lớn: bắt liền nhau thì *"**Cộng** hòa… **là** thành viên"* rớt ngay.
+  - **Cách làm — KHÔNG phình index:** bảng token vẫn dùng để **lọc thô**, rồi `phraseAt()` xác nhận
+    liền-nhau trên tập ứng viên. So theo **TOKEN** chứ không phải chuỗi con, nên "là,\ncông dân"
+    (dấu phẩy + xuống dòng) vẫn tính là liền — chuỗi con thì hụt ngay. Lưu vị trí token vào index
+    sẽ phình mạnh (đang 24,6 MB / +130 MB heap) nên không làm.
+  - **Tô sáng đổi theo:** trước tô RỜI RẠC từng token khớp (nên "đánh" bị tô khi tra "dân"), nay tô
+    **nguyên cụm thành một vệt**.
+  - **BẪY TỰ GÂY, đã sửa trong cùng beat:** thêm `SCAN_CAP` chặn tách-từ nhưng đếm nhầm — đếm CẢ
+    những đoạn bị loại bằng phép giao rẻ tiền, nên trần cháy trước khi kịp xét. Kết quả trên máy
+    tụt **50+ → 7**, và tệ hơn: kết quả phụ thuộc THỨ TỰ TÀI LIỆU chứ không phải độ liên quan.
+    Sửa thành **chỉ đếm việc đắt** (số đoạn thật sự đem đi tách từ) → 50+ trở lại.
+  - **Verify trên UBS1:** màn Tìm toàn kho — "la cong dan" ra 50+ đoạn, mọi đoạn tô liền một vệt
+    "là công dân"; **màn Tìm-trong-tài-liệu — đúng ca Gú báo: 32 đoạn → 1 đoạn**, đoạn còn lại là
+    *"1. Là công dân Việt Nam không quá 70 tuổi; · Khoản 1 · trang 6"*.
+  - **Đánh đổi đã chọn:** tra nhiều chữ nay **NGHIÊM** — "sử dụng quy hoạch" không còn khớp
+    *"nguyên tắc sử dụng đất phải đúng quy hoạch"*. Nếu Gú thấy chặt quá thì món tiếp theo là thêm
+    một mục "các đoạn có đủ chữ nhưng nằm rời" bên dưới, chưa làm vì chưa có ai kêu.
+
+- **v1.39.0 — TÌM TRONG MỘT TÀI LIỆU (từ góp ý THẬT của Gú).** Gú dùng v1.38.1 rồi phản hồi:
+  tìm toàn kho tốt, nhưng đang mở một quyển thì muốn tra ngay trong quyển đó. Đây là friction
+  quan sát được từ người dùng thật — đúng loại tín hiệu §8 vẫn chờ.
+  - **Chế độ đơn:** icon 🔍 nằm **CÙNG HÀNG** với ô "Tới trang…", bên trái nó. Gú nói "ở dưới chỗ
+    Nhảy tới trang" nhưng chọn cùng hàng vì thêm hàng riêng ăn ~40px chiều cao vùng đọc — đáng kể
+    trên màn **vuông 480dp của dGen1**. Huynh chốt phương án này.
+  - **Chế độ split:** chữ **"Tìm"** cạnh **"Đổi"** trên vạch chia, tra **pane DƯỚI** (pane tra cứu)
+    đúng như Gú xin. Pane trên trong split CHƯA có — Gú không xin, không tự thêm.
+  - **Kết quả là SHEET ĐOẠN TRÍCH, KHÔNG phải thanh ‹ › kiểu Ctrl+F.** Lý do kỹ thuật, không phải
+    thẩm mỹ: pdf.js render ra **canvas, không có lớp text** → **không tô sáng được chữ khớp trên
+    trang**. Bấm › nhảy tới trang 47 rồi phải dò bằng mắt trên trang luật dày là hụt; đoạn trích
+    chính là thứ thay cho tô sáng.
+  - **Không dựng engine mới:** tái dùng nguyên `indexDoc` + `search` + `makeSnippet` của v1.38.0.
+    Index MỘT tài liệu ≈ đọc 1 sidecar (~50ms) + tách từ (~30ms) → Viewer **không** phải nạp chỉ
+    mục toàn kho (~130 MB heap). `src/search/docIndex.ts`.
+  - Tài liệu là ảnh scan → sheet nói thẳng *"tài liệu này là ảnh chụp/scan — chưa tra được chữ"*,
+    khác hẳn ca "không tìm thấy".
+  - **HAI BẪY React đã vấp:** (a) đặt state đồng bộ trong effect để reset ô nhập → lint bắt, sửa
+    bằng cách tách thân sheet ra component có `key` theo tài liệu, state tự tươi; (b) **`autoFocus`
+    KHÔNG ăn trong `IonModal`** — sheet mở mà bàn phím không bật, phải chạm thêm một nhát. Sửa bằng
+    focus hoãn 350ms cho sheet trượt xong.
+  - **GỠ hàng "Đo hiệu năng (debug)" khỏi Cài đặt** (huynh xác nhận không dùng). Suốt v1.37→v1.39
+    toàn việc đo hiệu năng nhưng đo bằng `adb dumpsys`/`gfxinfo`, chưa mở modal đó lần nào; mà đây
+    là màn Cài đặt của Gú, không phải ngăn kéo dev.
+    **CHỈ gỡ LỐI VÀO — bộ đo `src/perf/perf.ts` GIỮ NGUYÊN** (vẫn cắm vào 16 chỗ trong `PdfView` /
+    `ImportDestinationFlow` / `FolderDocRow`): gỡ nó ra phải sờ read-path để đổi lấy 0 lợi ích, mà
+    nó vốn rẻ (`performance.now()` + Map trong RAM, tối đa 30 mẫu, không ghi file).
+    `PerfDebugModal.tsx` giữ lại nhưng **không ai import** → Vite tree-shake hẳn khỏi bản dựng
+    (kiểm: nhãn "Khởi động → Trang chủ" không còn trong bundle). Cần lại thì cắm lại **một dòng**
+    trong `SettingsPage`; giữ file cũng để `FLOW_LABELS`/`FLOW_ORDER` của `perf.ts` không thành
+    export chết.
+  - **Verify tay trên UBS1 (6GB):** đơn — icon đúng chỗ, gõ "toi pham" ra 50+ đoạn của RIÊNG tài
+    liệu đó, chạm kết quả nhảy đúng **trang 64/322**; split — "Tìm" tra đúng tài liệu pane dưới
+    (14 đoạn, nhãn "Slide 35 · trang 35"), không lẫn sang pane trên; bàn phím tự bật sau khi sửa.
+    Huynh duyệt và merge 07/09; tag `v1.39.0`, sửa lại thành **`v1.39.1`** (xem bẫy "hai APK
+    cùng versionName" ở §6 — bản .0 đã dựng trước lúc gỡ hàng "Đo hiệu năng"). **ĐÃ LÊN MÁY GÚ**
+    theo bản **v1.39.2** ngày 08/09 (một APK mang cả tìm-trong-tài-liệu lẫn bản vá cụm-liền-nhau).
+    Prod nay **bắt kịp main**, không còn bản nào treo.
+
+- **v1.38.1 — sửa lỗi index nhầm `IMAGE_PAGE_MARKER` (lỗi của chính v1.38.0).**
+  App KHÔNG hề biết marker này nên coi nó là chữ. Hậu quả: 13 tài liệu QA / 12 Prod nằm trong
+  chỉ mục như thể tra được, gõ chữ trong đó thì không ra gì mà cũng không có dấu hiệu nào báo,
+  cộng thêm token rác trong bảng.
+  - Sửa: `isReadableText()` loại cả chuỗi rỗng lẫn marker; đếm riêng **`imageOnly`** = sidecar CÓ
+    đơn vị nhưng KHÔNG đơn vị nào đọc được chữ (khác hẳn ca sidecar rỗng/hỏng — đó là lỗi worker).
+  - **Nói ra cho người dùng biết** thay vì im lặng: màn Tìm hiện "đã đọc N tài liệu · M tài liệu
+    là ảnh, chưa tra được chữ", và khi không tìm thấy gì thì nhắc thêm dòng đó.
+  - **`SCHEMA` chỉ mục 1 → 2** để mọi máy tự dựng lại — mảnh cũ đang mang token rác, không vá
+    tại chỗ được.
+  - **ĐÃ XÁC NHẬN TRÊN MÁY (dGen1, 05/09) — và lần đoán đầu SAI.** Đệ đặt hằng số bằng chính chuỗi
+    `'IMAGE_PAGE_MARKER'`; đọc thẳng sidecar trong kho thì giá trị thật là **tiếng Việt kèm số
+    trang**: `"[trang ảnh scan — chưa có lớp văn bản] (trang 12)"`. `IMAGE_PAGE_MARKER` chỉ là
+    **TÊN HẰNG SỐ trong source worker**, không phải giá trị — Ops doc gọi tên nó mà không ghi giá
+    trị nên ai đọc cũng sẽ đoán nhầm y hệt. Vì có đuôi `(trang N)` nên phải khớp **TIỀN TỐ**.
+    **Đã bổ sung giá trị thật vào `gu-library-sidecar-schema.md`** (khớp 3 nơi).
+  - **Ba nguồn độc lập cùng ra 13** trên kho QA: phiên worker đếm · `grep -rl 'trang ảnh scan'`
+    trên máy · và bộ đếm `imageOnly` của chính app hiện *"đã đọc 178 tài liệu · 13 tài liệu là
+    ảnh, chưa tra được chữ"*. Token rác cũng sạch: gõ "scan" nay ra 6 đoạn thật
+    ("Scandinavia"), trước đó cả 13 tài liệu ảnh đều khớp.
+
+- **v1.38.0 — TÌM KIẾM TOÀN VĂN (mở Phase 2 lớp tri thức).** Màn Tìm từ bề mặt rỗng thành tra
+  thật: gõ tới đâu tìm tới đó, kết quả là ĐOẠN TRÍCH có tô sáng kèm môn/tài liệu/nhãn/trang, chạm
+  là mở đúng trang (`/viewer/<uri>?p=N`). **Gõ KHÔNG DẤU ra kết quả CÓ DẤU** — yêu cầu gốc của
+  spec §7. Huynh test tay rồi duyệt và merge 05/09; tag `v1.38.0`.
+  **ĐÃ LÊN MÁY GÚ** — huynh đẩy bản **v1.38.1** sang Prod ngày 05/09, và chính từ đó Gú phản hồi
+  xin thêm "tìm trong một tài liệu" → thành v1.39.0.
+  - **Chỉ mục nằm trong IndexedDB của máy, KHÔNG vào cây Syncthing** (spec §4.3 dữ liệu phái sinh).
+    Hỏng thì xoá dựng lại — có cần gạt **"Dựng lại chỉ mục tìm kiếm"** trong Cài đặt.
+  - **`SafPlugin.listFolder` nay trả thêm `size` + `lastModified`** trong CÙNG cursor (không tốn
+    thêm vòng SAF). Đây là dấu vân tay để chỉ đọc lại file đã đổi. **`-1` = provider không trả cột
+    đó → phải coi là ĐÃ ĐỔI, tuyệt đối không coi hai cái "không biết" là bằng nhau.**
+  - **Số đo trên UBS1 (6GB, kho QA 178 tài liệu · 147.777 đơn vị · 20,8M ký tự):**
+    | | |
+    |---|---|
+    | dựng lần đầu | **14,0 s** (đọc 63% · tách từ 35%) — có màn tiến độ |
+    | lần mở sau | vào thẳng ô nhập; lối tắt "kho không đổi" khỏi đụng IndexedDB |
+    | tra một từ | **1–3 ms** |
+    | chỉ mục | **24,6 MB** trong IndexedDB |
+    | bộ nhớ màn Tìm | **303 MB** lắng · đỉnh tạm **389 MB** (nền Home 174 MB) |
+  - **Đọc sidecar bằng `Saf.readFile`, KHÔNG phải fetch qua local-server** — ngược với suy đoán ban
+    đầu, đo được 8,7 s so với 14,2 s cho 178 file. Bài học OOM v1.4.1 là về **MỘT** file 64 MB dựng
+    String ~170 MB; sidecar trung bình 330 KB nên không chạm trần, còn fetch trả giá mỗi file
+    (probeReadable + một vòng HTTP × 178). **Luật: nhiều file nhỏ → bridge, một file lớn → fetch.**
+  - **Đã verify tay trên máy:** gõ "dat dai" ra 50+ đoạn tô đúng cả `ĐẤT ĐAI`/`Đất đai`/`đất đai` ·
+    chạm kết quả mở đúng trang 290/667 và 31/46 · lần mở sau không dựng lại · chạm `mtime` một
+    sidecar thì chỉ cập nhật chứ không dựng lại từ đầu.
+  - **CÒN TREO, chưa làm trong beat này:**
+    1. **Chỉ mục nằm lại trong RAM sau khi rời màn Tìm** (Ionic giữ trang sống) → app ôm thêm
+       ~130 MB tới hết phiên. Chưa thấy hại trên máy 6GB nhưng là món đầu tiên nên gỡ nếu Gú kêu ì.
+    2. **Xếp hạng còn thô** (nguyên cụm > khớp sớm > đơn vị ngắn), chưa có TF-IDF, và trần 50 kết
+       quả nên chưa biết tổng thật.
+    3. **Cross-link tới Điều (spec §8) chưa làm** — chỗ đắt của nó không phải nhận diện tham chiếu
+       mà là làm cho nó BẤM ĐƯỢC: Viewer render bằng pdf.js ra canvas, không có lớp text.
+    4. **Kho Prod của Gú khác kho QA** (QA 178 tài liệu, Ops doc ghi Prod ~107) → lần dựng đầu bên
+       Prod sẽ nhanh hơn, nhưng chưa đo.
+  - **SỐ OCR ĐỆ BÁO 05/09 LÀ SAI — đã sửa ở v1.38.1.** Đệ đếm "tài liệu rỗng text" bằng tiêu chí
+    `text` RỖNG THẬT → ra 1/178. Phiên worker đếm bằng tiêu chí đúng (mọi unit là
+    `IMAGE_PAGE_MARKER`) → **QA 13/178 (7,3%) · Prod 12/113 (10,6%)**. Hai số khác nhau vì
+    **marker là chuỗi KHÔNG rỗng**, nên v1.38.0 đã **index marker như chữ thật**: tài liệu ảnh
+    nằm trong bảng như thể tra được, gõ gì cũng không ra, lại đẻ token rác. Xem v1.38.1.
+  - Chi tiết spike dẫn tới thiết kế này: `Docs/perf/2026-09-05-spike-search-index.md`.
+
+- **v1.38.0 verify trên dGen1 (05/09) — CHẠY ĐÚNG, kèm 3 bài học về máy này.**
+  Dựng chỉ mục 178 tài liệu · nạp lại sau reboot vẫn đúng · gõ "dat dai" ra 50+ đoạn tô đúng ·
+  cần gạt "Dựng lại chỉ mục" hoạt động (lần đầu bấm thử).
+  - **Bộ nhớ (chính + renderer):** Home sạch **250 MB** → màn Tìm **433 MB** (**+183 MB**).
+    So với UBS1: 174 → 303 (+129 MB). Chỉ mục tốn nhiều hơn trên dGen1 — WebView 124 cũ hơn,
+    máy khác lớp. 433 MB trên máy 7,59 GB là thoải mái.
+  - **BẪY 1 — MÀN ĐEN sau nhiều lượt `am force-stop` (KHÔNG phải lỗi app).** Log của chính tiến
+    trình app: `cr_ChildProcessConn: Failed to establish the service connection` + `Fallback to
+    …SandboxedProcessService1` → WebView KHÔNG bind được tiến trình con sandbox → không có
+    renderer → màn đen, dù activity vẫn resumed, RAM còn 5 GB, không lmkd, không crash.
+    **`am force-stop com.android.webview` KHÔNG cứu được. REBOOT máy thì hết.** Chỉ xuất hiện sau
+    chuỗi force-stop liên tiếp do adb — người dùng thật không gặp. Gặp lại thì reboot, đừng đi
+    tìm bug trong JS.
+  - **BẪY 2 — tên gói WebView KHÁC THEO MÁY.** UBS1 là `com.google.android.webview`, dGen1 là
+    `com.android.webview`. Script đo bộ nhớ hard-code tên gói của UBS1 nên trên dGen1 nó không
+    tìm được renderer (may là có guard nên nó DỪNG chứ không báo số thiếu). Khớp theo `*webview*`.
+  - **BẪY 3 — màn VUÔNG 480dp chật chiều dọc.** Home: mục "Môn học" bị thanh nav cắt ngang ngay
+    từ đầu. Màn Tìm: bàn phím ăn quá nửa màn, chỉ còn chỗ cho ~1 kết quả. Không phải lỗi, nhưng
+    là ca bố cục chưa từng có trong dự án — cân nhắc khi làm UI về sau.
+
+- **v1.37.0 — Book Press raster.** Huynh duyệt và merge 04/09; tag `v1.37.0`.
+  **ĐÃ LÊN MÁY GÚ** — đi theo bản v1.38.1 đẩy sang Prod ngày 05/09 (một APK mang cả hai beat).
+  *(Lúc merge có ghi "chưa lên máy Gú" và nghiệm thu mới trên MỘT máy QA là UBS1 — sau đó huynh
+  đẩy cùng v1.38.1.)*
+  Beat THÍ ĐIỂM cho hướng gáy-sách-raster bàn ngày 04/09: lấy máy ép làm miếng nhỏ nhất kiểm được
+  cả chất asset lẫn perf raster trên WebView mà không đụng kệ. `BookPress.tsx` đổi từ SVG tự vẽ sang
+  3 sprite cắt từ MỘT tấm ảnh Higgsfield bằng `scripts/make-press-sprites.py`.
+  - **Trạng thái thành LIÊN TỤC** theo số tài liệu (bản SVG chỉ có 3 nấc 0 / 1–4 / ≥5). Phép ánh xạ
+    tách ra `src/home/press.ts` — thuần, 12 test, cùng lối `shelf.ts`. Đổi khổ = sửa đúng `PRESS_H`.
+  - **`PRESS_W` giữ ĐÚNG 83 như bản SVG.** Thử 122 rồi 88: cả hai đều bị packShelves đẩy xuống một
+    tầng gần như trống (kho QA tầng 2 chỉ còn ~90px). Ảnh máy ép vốn bè ngang hơn hình SVG cũ nên
+    muốn to hơn là phải chấp nhận kệ đẻ thêm tầng — đo được, không phải suy.
+  - **Gate máy 6GB — ĐO 04/09 trên UBS1** (Android 14, RAM 5.89 GB, 720×1600 @320dpi, kho QA).
+    A/B cùng máy, cùng kho, 3 lượt mỗi bản, PSS = chính + renderer:
+    | | v1.36.0 (SVG) | v1.37.0 (raster) |
+    |---|---|---|
+    | PSS Home (trung vị) | **173 MB** (175/171/173) | **174 MB** (176/173/174) |
+    | Janky frames khi cuộn kệ | 0.40% (0.81/0.40/0.40) | 0.41% (1.21/0.41/0.40) |
+    | p90 / p95 khung | 11 / 11 ms | 11 / 11 ms |
+    | APK | 4.97 MB | 5.08 MB (**+115 KB**) |
+    → Chênh 1 MB nằm gọn trong dải dao động của CHÍNH nó (171–176). **Raster không tốn thêm gì
+    đo được.** Chạm mở "Chưa phân loại" verify tay: đúng.
+  - **Prompt sinh ảnh gốc (giữ để dựng lại được):** *"Product photograph of an antique cast-iron and
+    dark walnut wooden book binding press (book press / nipping press), shot perfectly straight-on
+    from the front, orthographic, symmetrical and centred. Dark aged wood with warm grain, aged brass
+    fittings, a turned brass screw with a horizontal handle bar across the top, two vertical posts, a
+    heavy flat base plinth, and a small blank brass nameplate on the front of the base. The press is
+    EMPTY: absolutely no paper, no sheets, no book between the platen and the base. The brass
+    nameplate is completely BLANK: no text, no letters, no engraving. Soft even studio lighting, warm
+    museum-object look. Isolated on a plain flat white background. Sharp focus, high detail, 4K."*
+    Model nano-banana qua Higgsfield, tỉ lệ 3:4. Ảnh gốc 6MB KHÔNG commit — chạy lại script với ảnh
+    mới nếu cần đổi art.
+  - **BA CÁI BẪY ĐÃ VẤP TRONG BEAT NÀY (đọc trước khi làm miếng raster tiếp theo):**
+    1. **Tách nền bằng flood-fill từ biên thì vùng KÍN bị coi là vật thể.** Ô trống giữa xà–hai
+       trụ–đế là vùng kín → lần đầu ra một mảng TRẮNG ĐỤC chắn ngang máy ép. Phải gieo thêm mầm
+       nền ở TRONG ô đó (`WINDOW_SEED`). Cùng bẫy lần hai: xoá bàn ép RỒI mới tách nền cũng hỏng —
+       phải tách nền trên ảnh GỐC rồi mới thay hàng.
+    2. **Ngưỡng tách nền phải cắt được BÓNG ĐỔ studio, và nó nằm THẤP chứ không cao.** 228 giữ
+       nguyên bóng thành mảng trắng cạnh đế; 185 mới sạch. Cách kiểm không cần mắt: đế sau khi tách
+       phải ĐỐI XỨNG quanh cột tâm của xà (897) — ở ngưỡng 228 đế chạy tới x1791, lệch hẳn.
+    3. **Máy có HAI `sandboxed_process0`** (app khác cũng xài WebView). `ps` chỉ hiện uid cách ly
+       (`u0_i9017`) nên KHÔNG suy ra chủ; chỗ duy nhất nói ai là chủ là `dumpsys activity processes`,
+       ghi dạng `u0a<uid-app>i<n>`. Lấy `head -1` của `ps` là đo nhầm app khác — đã đo nhầm thật.
+       *(Bẫy anh em với bài học S20 FE, nhưng cách gắn UID ở đó KHÔNG áp dụng được cho máy này.)*
+  - **BẪY THỨ TƯ, quan trọng nhất, áp cho CẢ APP: WebView KẸP CỠ CHỮ TỐI THIỂU ~8px — nhưng chỉ
+    với chữ đặt bằng CSS.** Bảng đồng của máy ép cần chữ ~5px. Đặt `fontSize: 4.4px` trên `<div>`
+    thì WebView âm thầm nâng lên ~8px, chữ tràn khỏi bảng (huynh bắt được trên máy). Đặt ĐÚNG cỡ
+    đó trong `<svg viewBox>` — cỡ chữ tính bằng user unit rồi cả khung mới thu nhỏ — thì KHÔNG bị
+    nâng. *Bằng chứng, hai lần đo mà hộp bảng khớp đúng số trong code:* bản `<div>` bảng 65 CSS px,
+    chữ nominal 4.4px (đáng lẽ ~31px) **tràn khỏi 65px**; bản `<svg>` bảng 66 CSS px, chữ rộng
+    **40 px, lề 13px mỗi bên** — đúng cỡ 23 user unit × 0,243 ≈ 5,6px như đặt.
+    → **Luật giữ về sau: chữ nhỏ hơn 8px BẮT BUỘC đi đường SVG có viewBox, không dùng CSS
+    font-size.** (Đường khác là chỉnh `WebSettings.setMinimumFontSize(1)` ở tầng native — sửa được
+    cả app nhưng đụng vỏ app, không làm trong beat áp da này.) Bản SVG cũ vốn đã đúng đường này;
+    lỗi sinh ra đúng lúc đệ đổi nó sang `<div>`.
+  - **Hai lỗi tự gây nữa, đã sửa, ghi lại vì dễ tái phạm:**
+    (a) đệ đổi chữ trên bảng thành "CHƯA ĐÓNG GÁY" theo bản vẽ AI, trong khi bản gốc ghi
+    "Chưa phân loại" cho khớp tên folder dùng ở Import / "Chuyển tới…" — beat áp da KHÔNG được
+    đổi chữ; (b) `overflow:hidden` trên bảng XÉN MẤT DẤU tiếng Việt ("ĐÓNG GÁY" ra "ĐONG GAY"),
+    vì dấu nhô cao hơn thân chữ — chặn tràn phải bằng cỡ chữ chứ không bằng kéo.
+    Và (c) khối hai dòng chữ CAO HƠN bảng thì phép căn giữa ra số ÂM, nét trên chọc lên khỏi mép —
+    nay `INK_TOP`/`INK_BOTTOM` tính trong `press.ts` và có test chặn.
+  - **Còn để ngỏ:** xấp giấy vẫn là khối CSS phẳng cạnh cỗ máy chụp thật — hợp mắt ở khổ 83px nhưng
+    là chỗ chênh chất liệu rõ nhất nếu sau này phóng to.
+
+### 8.2 Worker *(Atomman ghi)*
+
+- **Search của app (từ v1.38.0) ăn thẳng `units[]` trong sidecar:** mỗi đơn vị là một
+  kết quả tra được, hiện kèm `label` (vd "Điều 5", "Slide 12") và `page`, chạm là mở PDF
+  đúng trang.
 - **Hệ quả vận hành của search (quan trọng khi sửa sidecar):** app đọc `units[].text`,
   `label`, `page`, và **cache chỉ mục theo `size` + `lastModified` của file sidecar**.
   Ghi đè sidecar → mọi máy Android đọc lại và dựng lại chỉ mục **riêng file đó** (đúng
@@ -378,6 +746,10 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   Atomman.** *Ước lượng (CHƯA đo, chỉ để cân nhắc): Tesseract `vie` cỡ 1–3 s/trang ở độ
   phân giải này → ~12–35 phút cho một lượt toàn kho Prod, cộng công cài Tesseract +
   traineddata tiếng Việt.* Chưa xây gì — chờ huynh quyết.
-- Backlog feature (M10 folder-level, breadcrumb bấm-nhảy-tầng, nav chữ-bên-icon) đang
-  **đóng băng có chủ ý**: Gú đang dùng thật, chưa phát sinh feedback. Không mở beat mới
-  cho tới khi có vấn đề quan sát được từ người dùng thật — không suy diễn nhu cầu.
+
+### 8.3 Nguyên tắc chung
+
+- Backlog cũ (M10 folder-level, breadcrumb, nav chữ-bên-icon) đã **giải quyết xong** (M10 +
+  breadcrumb đã làm; nav = won't-do). **Không còn backlog feature Phase 1 mở.** Nguyên tắc giữ
+  nguyên: không mở beat mới cho tới khi có vấn đề quan sát được từ người dùng thật — không suy
+  diễn nhu cầu. (Các beat v1.20→v1.25 vừa qua đều xuất phát từ feedback thật của Gú khi dùng.)
