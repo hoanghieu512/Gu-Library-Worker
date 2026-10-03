@@ -8,6 +8,15 @@ See `Docs/superpowers/plans/2026-06-21-gu-library-m7-worker.md` and
 
 ## Running on the Atomman
 
+Build `.venv` from a **python.org** Python (the regular installer; a per-user
+install needs no admin), **not** the Microsoft Store Python. Store Python runs
+every process in one per-user AppX container; a Python started by hand at the
+moment the Scheduled Task fires makes the task's launcher hang until the
+30-minute execution limit (Event log `AppModel-Runtime/Admin` 208/212):
+
+    %LOCALAPPDATA%\Programs\Python\Python311\python.exe -m venv .venv
+    .venv\Scripts\python -m pip install -e .
+
 One pass manually (LibreOffice is auto-detected — no `--soffice` needed):
 
     .venv\Scripts\python -m gu_library_worker --kho "D:\path\to\kho"

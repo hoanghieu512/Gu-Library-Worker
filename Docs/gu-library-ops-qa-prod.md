@@ -69,18 +69,18 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   `.stignore` giữ local). **Mỗi kho một log riêng**, mỗi dòng gắn nhãn kho
   (`[GuLibrary]` / `[GuLibrary-Prod]`) — soi Prod vs QA không lẫn. Console không hiện
   gì là **bình thường**.
-- **⚠️ Đừng chạy tay `python` của bản Microsoft Store khi task đang sống (nguyên nhân các
-  khoảng trống 33 phút / 1 giờ 3 phút trong `_worker.log` từ 01/09).** `.venv` hiện dựng
-  trên Python Store; mọi tiến trình của Python Store chạy chung một "Desktop AppX container"
-  theo user. Đang có một tiến trình chạy tay trong phiên đăng nhập (kể cả
-  `.venv\Scripts\python.exe`, `pytest`, script một lần) đúng lúc task kích hoạt → task S4U
-  bị từ chối vào container (`AppModel-Runtime/Admin` sự kiện 208/212, `0x80070005`) →
-  launcher `pythonw.exe` **treo** tới khi `ExecutionTimeLimit` diệt sau 30 phút, `IgnoreNew`
-  bỏ mọi lần kích hoạt giữa chừng. Không phải do tải CPU (thử 4 tiến trình OCR liên tục
-  31 phút bằng Python thường: không lỡ vòng nào). **Né:** chạy tay bằng Python cài thường
-  `%LOCALAPPDATA%\Programs\Python\Python311` (cài 03/10, không Admin) hoặc venv dựng từ nó.
-  **Sửa dứt điểm (chờ huynh duyệt):** dựng lại `.venv` trên Python đó — đường dẫn task
-  `.venv\Scripts\pythonw.exe` không đổi, không phải đăng ký lại task.
+- **`.venv` PHẢI dựng trên Python cài thường (python.org), KHÔNG dùng Python bản Microsoft
+  Store** — bài học từ các khoảng trống 33 phút / 1 giờ 3 phút trong `_worker.log` từ 01/09.
+  Python Store chạy mọi tiến trình trong một "Desktop AppX container" chung theo user: đang có
+  một tiến trình chạy tay trong phiên đăng nhập (`pytest`, script, phiên Claude…) đúng lúc task
+  kích hoạt → task S4U bị từ chối vào container (`AppModel-Runtime/Admin` sự kiện 208/212,
+  `0x80070005`) → launcher `pythonw.exe` **treo** tới khi `ExecutionTimeLimit` diệt sau 30
+  phút, `IgnoreNew` bỏ mọi lần kích hoạt giữa chừng. Không phải do tải CPU. **Đã sửa
+  04/10:** `.venv` dựng lại trên Python 3.11.9 python.org cài cho riêng user
+  (`%LOCALAPPDATA%\Programs\Python\Python311`, không Admin); đường dẫn task không đổi. Thử lại
+  đúng điều kiện cũ (giữ Python Store chạy tay vắt qua lần kích hoạt) → không kẹt. `.venv`
+  cũ để ở `D:\Project\_backup\Gu-Library-Worker.venv-store-20261004` (xoá được khi yên tâm).
+  Dấu hiệu tái phát: khoảng trống đúng 33:00 giữa hai dòng `scan starting`.
 - **OCR trang ảnh (v0.20.0) — BẬT RIÊNG TỪNG KHO, không cần đăng ký lại task.** Công tắc:
   file `<kho>_ocrcache\ocr.json` = `{"enabled": true, "workers": 2}` (thư mục anh em với
   `kho_archive`, ngoài Syncthing); không có file = tắt, không ghi log. Chạy **sau** bước nhập
@@ -186,7 +186,8 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
    (simple versioning) bật — đây là lưới M8.
 3. **Máy Android mới:** cài Syncthing-Fork → trao đổi device-ID với Atomman → share
    ĐÚNG MỘT folder (QA hoặc Prod, không bao giờ cả hai) → chờ sync xong lượt đầu.
-4. **Worker:** *(Atomman mới — dựng môi trường trước:* cài Python 3.11+ và LibreOffice,
+4. **Worker:** *(Atomman mới — dựng môi trường trước:* cài Python 3.11+ **bản python.org
+   (installer thường, cài cho riêng user được) — KHÔNG lấy bản Microsoft Store** (§3) — và LibreOffice,
    `git clone` repo worker, `python -m venv .venv` rồi `.venv\Scripts\python -m pip install
    -e .`; soffice auto-detect nên không cần sửa PATH — chi tiết README worker.*)*
    Nếu là kho mới, thêm đường dẫn vào `-KhoRoot` (tách phẩy) của Scheduled
@@ -690,8 +691,8 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   conf < 60 / OOV > 15 % với từ vựng cố định, chỉ tài liệu có câu đánh dấu, Tesseract best
   200→300 dpi). **QA:** bật 2026-10-04 01:40 (`workers: 2`), xong 02:10 — 844 trang: 841 ra chữ, 3 giữ đánh dấu (2 trang trắng giáo trình + ảnh báo `4_5_2026` chữ rác); 12/13 sidecar ghi lại; không vòng nào trễ. *Giám định pháp y* phình 47 KB → 2,1 MB (6.820 unit từ bảng) — máy test tách từ lại lâu hơn thường. **Prod: CHƯA bật — chờ Mac verify QA** (tra chữ
   trong giáo trình 398 trang + nhảy đúng trang); bật thì Luật SĐ BLHS 2025 lên đầu.
-  Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ (Python Store, xem §3), thử tải
-  sạch ở cả N=2 lẫn N=4.
+  Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ và **đã sửa** (`.venv` chuyển sang
+  Python python.org 04/10, xem §3), thử tải sạch ở cả N=2 lẫn N=4.
 - Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
