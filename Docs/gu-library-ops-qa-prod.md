@@ -688,7 +688,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **v0.20.0 — OCR trang ảnh (2026-10-04).** Làm theo spike `Docs/spikes/2026-10-03-ocr-scope-and-engine.md`
   §6 + các chốt của Mac (map `Ð→Đ`/`ð→đ`, field tùy chọn `ocr: true`, cổng < 20 ký tự /
   conf < 60 / OOV > 15 % với từ vựng cố định, chỉ tài liệu có câu đánh dấu, Tesseract best
-  200→300 dpi). **QA:** bật 2026-10-04 (`workers: 2`), đang OCR dần 844 trang — số liệu cập nhật khi xong. **Prod: CHƯA bật — chờ Mac verify QA** (tra chữ
+  200→300 dpi). **QA:** bật 2026-10-04 01:40 (`workers: 2`), xong 02:10 — 844 trang: 841 ra chữ, 3 giữ đánh dấu (2 trang trắng giáo trình + ảnh báo `4_5_2026` chữ rác); 12/13 sidecar ghi lại; không vòng nào trễ. *Giám định pháp y* phình 47 KB → 2,1 MB (6.820 unit từ bảng) — máy test tách từ lại lâu hơn thường. **Prod: CHƯA bật — chờ Mac verify QA** (tra chữ
   trong giáo trình 398 trang + nhảy đúng trang); bật thì Luật SĐ BLHS 2025 lên đầu.
   Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ (Python Store, xem §3), thử tải
   sạch ở cả N=2 lẫn N=4.
