@@ -39,6 +39,13 @@ class Paths:
         # the kho, so it is OUTSIDE the Syncthing folder (never synced / in-kho).
         return self.kho_root.with_name(self.kho_root.name + "_archive")
 
+    @property
+    def ocr_dir(self) -> Path:
+        # OCR switch (`ocr.json`), per-page results and scratch files. A SIBLING of
+        # the kho like archive_dir: outside the Syncthing folder, and on the same
+        # drive, so a finished sidecar can be moved into the kho atomically.
+        return self.kho_root.with_name(self.kho_root.name + "_ocrcache")
+
     def subject_dir(self, subject: str) -> Path:
         # `subject` may be a "/"-joined nested path (e.g. "Môn/Bài giảng"); split
         # it into real folders. A plain single-level subject is unchanged.

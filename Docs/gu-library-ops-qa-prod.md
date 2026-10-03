@@ -6,7 +6,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
   bắt kịp main** · cập nhật 2026-09-08
 
-- **Worker** *(Atomman ghi dòng này)*: v0.19.0 · cập nhật 2026-10-03
+- **Worker** *(Atomman ghi dòng này)*: v0.20.0 (OCR trang ảnh: QA bật, Prod CHƯA) · cập nhật 2026-10-04
 
 > **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
 > với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
@@ -69,6 +69,28 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   `.stignore` giữ local). **Mỗi kho một log riêng**, mỗi dòng gắn nhãn kho
   (`[GuLibrary]` / `[GuLibrary-Prod]`) — soi Prod vs QA không lẫn. Console không hiện
   gì là **bình thường**.
+- **⚠️ Đừng chạy tay `python` của bản Microsoft Store khi task đang sống (nguyên nhân các
+  khoảng trống 33 phút / 1 giờ 3 phút trong `_worker.log` từ 01/09).** `.venv` hiện dựng
+  trên Python Store; mọi tiến trình của Python Store chạy chung một "Desktop AppX container"
+  theo user. Đang có một tiến trình chạy tay trong phiên đăng nhập (kể cả
+  `.venv\Scripts\python.exe`, `pytest`, script một lần) đúng lúc task kích hoạt → task S4U
+  bị từ chối vào container (`AppModel-Runtime/Admin` sự kiện 208/212, `0x80070005`) →
+  launcher `pythonw.exe` **treo** tới khi `ExecutionTimeLimit` diệt sau 30 phút, `IgnoreNew`
+  bỏ mọi lần kích hoạt giữa chừng. Không phải do tải CPU (thử 4 tiến trình OCR liên tục
+  31 phút bằng Python thường: không lỡ vòng nào). **Né:** chạy tay bằng Python cài thường
+  `%LOCALAPPDATA%\Programs\Python\Python311` (cài 03/10, không Admin) hoặc venv dựng từ nó.
+  **Sửa dứt điểm (chờ huynh duyệt):** dựng lại `.venv` trên Python đó — đường dẫn task
+  `.venv\Scripts\pythonw.exe` không đổi, không phải đăng ký lại task.
+- **OCR trang ảnh (v0.20.0) — BẬT RIÊNG TỪNG KHO, không cần đăng ký lại task.** Công tắc:
+  file `<kho>_ocrcache\ocr.json` = `{"enabled": true, "workers": 2}` (thư mục anh em với
+  `kho_archive`, ngoài Syncthing); không có file = tắt, không ghi log. Chạy **sau** bước nhập
+  mỗi vòng, tối đa ~120 s (`--ocr-budget`), hết giờ thì vòng sau làm tiếp; tài liệu Gú đã
+  mở được làm trước (đọc sâu nhất trước). Engine Tesseract 5.4 + `vie` bản best, cài không
+  Admin ở `%LOCALAPPDATA%\Programs\Tesseract-OCR`; thiếu → `ocr skipped: …` 1 dòng/vòng,
+  nhập file không ảnh hưởng. Mỗi tài liệu ghi sidecar **đúng một lần** khi đủ trang (cache
+  trang ở `<kho>_ocrcache\pages\`), trang hụt giữ nguyên câu đánh dấu, unit OCR mang
+  `"ocr": true`. Muốn OCR lại một tài liệu: xoá file của nó trong `pages\`. Tắt khẩn: đổi
+  `"enabled": false` hoặc xoá `ocr.json`.
 - File nặng (PDF scan jpx/DPI cao) được chuẩn hóa ~0.8s/trang → một quyển lớn có thể
   kéo một vòng quét dài vài phút, kho còn lại trễ tối đa một vòng, tự lành vòng sau.
   PDF có text layer / scan nhẹ sẵn **KHÔNG** bị chuẩn hóa.
@@ -663,6 +685,13 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   chia đợt nếu số file lớn. Loạt v0.14.0–v0.16.0 đụng 19 + 7 + 26 file nên không cần chia.
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
+- **v0.20.0 — OCR trang ảnh (2026-10-04).** Làm theo spike `Docs/spikes/2026-10-03-ocr-scope-and-engine.md`
+  §6 + các chốt của Mac (map `Ð→Đ`/`ð→đ`, field tùy chọn `ocr: true`, cổng < 20 ký tự /
+  conf < 60 / OOV > 15 % với từ vựng cố định, chỉ tài liệu có câu đánh dấu, Tesseract best
+  200→300 dpi). **QA:** bật 2026-10-04 (`workers: 2`), đang OCR dần 844 trang — số liệu cập nhật khi xong. **Prod: CHƯA bật — chờ Mac verify QA** (tra chữ
+  trong giáo trình 398 trang + nhảy đúng trang); bật thì Luật SĐ BLHS 2025 lên đầu.
+  Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ (Python Store, xem §3), thử tải
+  sạch ở cả N=2 lẫn N=4.
 - Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),

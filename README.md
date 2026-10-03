@@ -78,6 +78,61 @@ delay the other kho's scan by up to that one pass — it self-heals on the next
 3-minute run. This is intentional (no parallel LibreOffice); the loop
 architecture is unchanged.
 
+## OCR of image pages (v0.20.0, opt-in per kho)
+
+A scanned PDF or a photo gets one placeholder unit per page
+(`[trang ảnh scan — chưa có lớp văn bản] (trang N)`) so it is readable but not
+searchable. The OCR stage replaces those placeholders with recognised text. It
+runs **after** intake on every pass, so a new file in `_inbox/` never waits for it.
+
+**Switch (per kho, no task change needed):** create
+`<kho>_ocrcache\ocr.json` next to the kho (outside Syncthing):
+
+    {"enabled": true, "workers": 2}
+
+No file, or `"enabled": false` → OCR is off for that kho and the worker logs
+nothing about it. `workers` = parallel Tesseract processes (1-8).
+
+**Engine:** Tesseract 5 with the `vie` model from **tessdata_best** (pinned by
+sha256 — the standard model is refused, it doubles the errors on photocopies).
+Lookup: `GULIB_TESSERACT` env var → `%LOCALAPPDATA%\Programs\Tesseract-OCR\` →
+`C:\Program Files\Tesseract-OCR\` → `PATH`; the model comes from `GULIB_TESSDATA`
+or the `tessdata` folder next to the binary. Missing → the stage is skipped with
+one `ocr skipped: …` line per pass and intake is unaffected. A no-admin install:
+extract the official UB-Mannheim installer (e.g. with 7-Zip) into
+`%LOCALAPPDATA%\Programs\Tesseract-OCR\` and drop
+[`vie.traineddata`](https://github.com/tesseract-ocr/tessdata_best/raw/main/vie.traineddata)
+into its `tessdata`.
+
+**What it does** (measured choices: `Docs/spikes/2026-10-03-ocr-scope-and-engine.md`):
+- Only documents whose sidecar still has placeholders and no text from anywhere
+  else. Order: documents Gú has opened (`_reading-*.json`, furthest read first),
+  then the rest, fewest pages first.
+- Pages are rendered at 200 dpi (300 dpi when the median line is under 30 px —
+  small newspaper print), recognised, cleaned (NFC, `Ð`→`Đ`, `ð`→`đ`), then fed
+  through the same reader as a text PDF: header/footer removal, Điều/Khoản
+  parsing, paragraph fallback, line `bbox` in PDF points.
+- A page keeps its placeholder unless it has ≥ 20 characters, mean confidence
+  ≥ 60 and ≤ 15 % words outside `data/ocr_lexicon.txt` (a fixed list, rebuilt
+  only on purpose with `scripts/build-ocr-lexicon.py`).
+- OCR units carry `"ocr": true` (optional field, schema version unchanged).
+- **Time budget:** page jobs stop being started after `--ocr-budget` seconds
+  (default 120, shared by all kho) and the next pass continues. Each finished
+  page is cached in `<kho>_ocrcache\pages\` (keyed by PDF size+mtime and engine),
+  so nothing is OCR'd twice and an interrupted document resumes.
+- **One write per document:** the sidecar is rewritten only when every page is
+  cached and the result differs. Right before, the PDF and the old sidecar are
+  checked again (unchanged, still placeholders); the new file is written in
+  `<kho>_ocrcache\tmp\` and moved in with `os.replace`. The PDF is never touched.
+
+Manual backfill run (same rules, bigger budget, no intake):
+
+    .venv\Scripts\python -m gu_library_worker --kho "D:\GuLibrary\kho" --skip-intake --ocr-budget 3600
+
+A lock file (`<kho>_ocrcache\lock`) keeps a manual run and the scheduled one
+from working on the same kho at once. To redo a document, delete its cache file
+in `pages\` (or the whole `_ocrcache` except `ocr.json`).
+
 ## Rebuilding slide structure: `reslide` (manual, one-off)
 
 A legacy `.ppt` can't be read by python-pptx, so the pipeline converts it and

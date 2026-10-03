@@ -18,6 +18,10 @@ class Unit:
     # origin, on `page`. Only PDF-origin units carry it; absence is valid
     # (Viewer degrades to a page jump). Never set when coordinates are unknown.
     bbox: list[float] | None = None
+    # Optional: True when the text was recognised from a page image (OCR) rather
+    # than read from a text layer. Serialized only when True (absent = False), so
+    # sidecars without OCR are byte-for-byte what they were before.
+    ocr: bool = False
 
 @dataclass
 class Document:
@@ -51,6 +55,8 @@ def _unit_to_dict(u: Unit) -> dict:
     }
     if u.bbox is not None:  # optional: omit the key entirely when unknown
         d["bbox"] = [float(c) for c in u.bbox]
+    if u.ocr:  # optional: present only on OCR-derived units
+        d["ocr"] = True
     return d
 
 def validate_sidecar(data: dict) -> list[str]:
@@ -102,4 +108,6 @@ def validate_sidecar(data: dict) -> list[str]:
                     or not all(isinstance(c, (int, float)) and not isinstance(c, bool)
                                for c in bbox)):
                 errors.append(f"{where} bbox must be a list of 4 numbers")
+        if "ocr" in u and not isinstance(u["ocr"], bool):  # optional; a real boolean
+            errors.append(f"{where} ocr must be a boolean")
     return errors

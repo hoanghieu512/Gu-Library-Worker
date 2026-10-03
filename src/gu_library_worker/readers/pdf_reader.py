@@ -136,7 +136,16 @@ def _pdf_lines(path: Path) -> tuple[list[Line], list[tuple[str, int, list[float]
     never become junk units and never get injected into a unit whose text
     spans a page break.
     """
-    page_blocks, page_heights = _read_pages(path)
+    return _lines_from_pages(*_read_pages(path))
+
+def _lines_from_pages(page_blocks, page_heights
+                      ) -> tuple[list[Line], list[tuple[str, int, list[float]]]]:
+    """The text-source-independent half of `_pdf_lines`.
+
+    `page_blocks` has the shape `_read_pages` returns (per page: blocks of
+    (line_text, line_bbox)), whether the lines came from the PDF text layer or
+    from OCR of the page image — so both get the same header/footer, signature
+    and cover cleanup."""
     running = _detect_running(page_blocks, page_heights)
     lines: list[Line] = []
     blocks_out: list[tuple[str, int, list[float]]] = []
@@ -167,33 +176,48 @@ def _pdf_lines(path: Path) -> tuple[list[Line], list[tuple[str, int, list[float]
 # marker so Phase 2 (OCR) can find pages that still need text extraction.
 IMAGE_PAGE_MARKER = "[trang ảnh scan — chưa có lớp văn bản]"
 
+def is_marker_text(text: str) -> bool:
+    """True for the placeholder text of a page that still has no text."""
+    return text.startswith(IMAGE_PAGE_MARKER)
+
+def marker_unit(page_no: int, rect) -> Unit:
+    """The placeholder unit for an image page (exact format the app filters on)."""
+    return Unit(
+        type="paragraph", label=f"Trang {page_no}", path=[],
+        text=f"{IMAGE_PAGE_MARKER} (trang {page_no})",
+        page=page_no, bbox=[float(rect[0]), float(rect[1]), float(rect[2]), float(rect[3])],
+    )
+
 def _image_pdf_units(path: Path) -> list[Unit]:
     """One minimal unit per page for a text-less (scanned/image) PDF.
 
     The Viewer renders the page image regardless of text, so the doc becomes
     readable and stops being stuck in _inbox. Schema-safe: type `paragraph`,
-    non-empty placeholder text, full-page bbox. No OCR here (that's Phase 2)."""
-    units: list[Unit] = []
+    non-empty placeholder text, full-page bbox. Text comes later, from the OCR
+    stage (`ocr_stage`), which looks for exactly these units."""
     with fitz.open(stream=path.read_bytes(), filetype="pdf") as doc:
-        for i, page in enumerate(doc, start=1):
-            r = page.rect
-            units.append(Unit(
-                type="paragraph", label=f"Trang {i}", path=[],
-                text=f"{IMAGE_PAGE_MARKER} (trang {i})",
-                page=i, bbox=[float(r.x0), float(r.y0), float(r.x1), float(r.y1)],
-            ))
-    return units
+        return [marker_unit(i, page.rect) for i, page in enumerate(doc, start=1)]
 
-def read_pdf(path: Path) -> Extraction:
-    lines, blocks = _pdf_lines(path)
+def extract_from_page_blocks(page_blocks, page_heights) -> Extraction | None:
+    """Build units from per-page line blocks; None when there is no text at all.
+
+    Shared by the text-layer reader below and the OCR stage, so recognised text
+    gets exactly the same structure detection (Điều/Khoản, else paragraphs)."""
+    lines, blocks = _lines_from_pages(page_blocks, page_heights)
     if has_legal_structure(lines):
         return Extraction(kind="legal", units=parse_legal(lines))
     if not blocks:
+        return None
+    units = [Unit(type="paragraph", label="", path=[], text=text, page=pno, bbox=bbox)
+             for text, pno, bbox in blocks]
+    return Extraction(kind="prose", units=units)
+
+def read_pdf(path: Path) -> Extraction:
+    extraction = extract_from_page_blocks(*_read_pages(path))
+    if extraction is None:
         # No text anywhere -> scanned/image PDF. Emit a minimal per-page sidecar
         # instead of failing on empty units (which stuck the file in _inbox).
         # Any text on any page takes the normal path above, so a mixed PDF is
         # NOT degraded here.
         return Extraction(kind="prose", units=_image_pdf_units(path), image_pdf=True)
-    units = [Unit(type="paragraph", label="", path=[], text=text, page=pno, bbox=bbox)
-             for text, pno, bbox in blocks]
-    return Extraction(kind="prose", units=units)
+    return extraction

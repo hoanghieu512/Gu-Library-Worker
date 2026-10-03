@@ -8,6 +8,7 @@ from pathlib import Path
 from .config import Paths
 from .convert import to_pdf
 from .logsetup import kho_logging
+from .ocr_stage import DEFAULT_BUDGET_S, run_stage
 from .scan import scan_once
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -20,6 +21,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
                    help="LibreOffice soffice path (auto-detected if omitted; "
                         "or set the GULIB_SOFFICE env var)")
     p.add_argument("--log-level", default="INFO")
+    p.add_argument("--ocr-budget", type=float, default=DEFAULT_BUDGET_S, metavar="SECONDS",
+                   help="time the OCR stage may spend starting page jobs this pass, "
+                        f"shared by all kho (default {DEFAULT_BUDGET_S:.0f}). OCR runs only "
+                        "for a kho with <kho>_ocrcache/ocr.json set to enabled.")
+    p.add_argument("--skip-intake", action="store_true",
+                   help="skip the _inbox scan and run only the OCR stage "
+                        "(manual backfill runs)")
     return p
 
 def _kho_label(kho_root: Path) -> str:
@@ -39,7 +47,7 @@ def run(argv: list[str] | None = None) -> int:
     # One process, one task: scan each kho SEQUENTIALLY (never two LibreOffice
     # conversions at once — they share a headless profile and would lock). One
     # kho's failure must not stop the rest, so isolate each.
-    for kho_path in args.kho:
+    for kho_path in [] if args.skip_intake else args.kho:
         kho_root = Path(kho_path)
         label = _kho_label(kho_root)
         if not kho_root.is_dir():
@@ -54,6 +62,10 @@ def run(argv: list[str] | None = None) -> int:
                 continue
             log.info("done: processed=%d skipped=%d failed=%d",
                      report.processed, report.skipped, report.failed)
+
+    # OCR after intake, so a new file is never kept waiting behind image pages.
+    # Opt-in per kho; a kho without ocr.json is untouched and logs nothing.
+    run_stage([Path(k) for k in args.kho if Path(k).is_dir()], args.ocr_budget, _kho_label)
     return 0
 
 if __name__ == "__main__":
