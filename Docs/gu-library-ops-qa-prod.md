@@ -1,6 +1,6 @@
 # Gú's Library — Ghi chú vận hành QA / Prod
 
-*Cập nhật 2026-09-06, trạng thái: app v1.38.0 · worker v0.16.0. **Bản hợp nhất** —
+*Cập nhật 2026-10-03, trạng thái: app v1.38.0 · worker v0.19.0. **Bản hợp nhất** —
 nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn Obsidian. File này
 dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
@@ -88,33 +88,40 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   `gdrive:GuLibrary/Backup`). Register bằng `scripts\register-ops-tasks.ps1` (Admin).
   Log riêng, **NGOÀI kho**: `D:\GuLibrary-Prod\_print-sync.log` và `_backup.log`. rclone
   cài user-scope (winget), remote tên `gdrive`, config OAuth ở `%APPDATA%\rclone\rclone.conf`.
-- **Cảnh báo qua chat (v0.17.0, Zalo Bot — đổi sang Telegram chỉ bằng config):** print-sync
-  lỗi liên tục **≥ 2 giờ** → tin `FAILING`, còn lỗi thì nhắc lại mỗi 24 giờ, hết lỗi →
-  `RECOVERED`. Backup thì **gửi `OK` sau mỗi lượt Chủ nhật** — đây là nhịp tim: **Chủ nhật
-  không thấy tin = có chuyện**, kể cả khi chính kênh cảnh báo đã chết. Config (chứa token,
-  **ngoài repo**): `%APPDATA%\GuLibrary\notify.json`; state cạnh log
-  (`_print-sync.state.json`, `_backup.state.json`). Setup/test: `scripts\notify-setup.ps1`
-  (`-Test` để gửi thử). Cảnh báo hỏng → log `WARN notify failed`, không bao giờ làm task fail.
-  **Câu chữ tiếng Việt nằm ở `scripts\notify-messages.json` (v0.18.0), không nằm trong code.**
-  Backup xong nhắn "Đã backup xong rồi nha huynh!". Tin lỗi ghi rõ **nguyên nhân + cách xử
-  lý + lỗi gốc**, tra theo danh sách `errors` (regex, khớp cái đầu tiên): mất mạng, hết hạn
-  đăng nhập Google, Drive đầy, bị giới hạn tốc độ, lệch giờ, thiếu rclone/config, ổ đầy,
-  robocopy lỗi. Gặp lỗi lạ (`error_unknown`) → thêm một mục vào `errors`.
-  **Mất mạng/cúp điện (v0.19.0): mini PC không tự báo được lúc đang sự cố** (chính nó là
-  người gửi tin), nên nó **báo bù khi có lại**: lỗi đủ lâu mà tin cảnh báo không gửi được
-  → `recovered_unreported` ("bị lỗi từ… nhưng không gửi được cảnh báo, nhiều khả năng mất
-  mạng"); lượt chạy trước cách **> 60 phút** → `downtime` ("Mini PC đã ngừng chạy từ… đến…"),
-  kèm giờ khởi động Windows để phân biệt *đã khởi động lại* (cúp điện/treo/Windows Update)
-  với *không khởi động lại* (sleep/task bị tắt). Muốn biết **ngay trong lúc** sự cố thì phải
-  có máy canh từ bên ngoài (healthchecks.io…) — đã cân nhắc, chưa làm vì hàng đợi in chậm
-  vài giờ không sao.
-  **Giới hạn 7 ngày (nếu có) không làm bot ngừng hoạt động:** chỉ chặn *bot tự nhắn trước*
-  khi huynh không nhắn gì cho bot quá 7 ngày. Nhắn bot một tin bất kỳ là khung 7 ngày tính
-  lại từ đầu. Phép thử: tin `OK` ngày 11/10/2026 — **không nhắn bot từ 29/09 tới 11/10**
-  để phép thử có ý nghĩa.
-  *Chưa chứng minh:* Zalo Bot có chặn tin chủ động sau 7 ngày không tương tác như Zalo OA
-  hay không. Tài liệu Zalo Bot không nói; tin `OK` Chủ nhật tuần thứ 2 sau setup chính là
-  phép thử. Không tới → đổi `provider` sang `telegram`.
+- **Cảnh báo qua Zalo (v0.17.0 → v0.19.0)** — bot Zalo nhắn thẳng cho huynh, không cần
+  mở log. Code ở `scripts\notify.ps1`, cả hai task hạ tầng đều gọi tới.
+
+  | Tin | Khi nào |
+  |---|---|
+  | "Đã backup xong rồi nha huynh!" | Sau **mỗi** lượt backup Chủ nhật — đây là nhịp tim: **Chủ nhật không thấy tin = có chuyện**, kể cả khi chính kênh cảnh báo đã chết |
+  | ⚠️ … đang bị lỗi | print-sync lỗi liên tục **≥ 2 giờ** (còn lỗi thì nhắc lại mỗi 24 giờ); backup lỗi là báo ngay. Tin ghi rõ **nguyên nhân + cách xử lý + lỗi gốc** |
+  | ✅ … đã chạy lại bình thường | Lần chạy được đầu tiên sau một tin ⚠️ |
+  | ✅ … nhưng không gửi được cảnh báo | Đã lỗi đủ lâu mà tin ⚠️ không gửi đi được — thường do chính mini PC mất mạng |
+  | 🔌 Mini PC đã ngừng chạy từ… đến… | Lượt print-sync trước cách **> 60 phút**. Kèm giờ khởi động Windows để phân biệt *đã khởi động lại* (cúp điện, treo phải bật lại, Windows Update) với *không khởi động lại* (sleep, task bị tắt) |
+
+  - **Mini PC không tự báo được lúc đang mất mạng/mất điện** (chính nó là người gửi tin)
+    — hai tin cuối là **báo bù khi có lại**. Muốn biết *ngay trong lúc* sự cố thì phải có
+    máy canh bên ngoài (healthchecks.io…); đã cân nhắc, chưa làm vì hàng đợi in chậm vài
+    giờ không sao.
+  - **Câu chữ (tiếng Việt) nằm ở `scripts\notify-messages.json`, không nằm trong code** —
+    sửa thoải mái. Danh sách `errors` (regex, khớp mục đầu tiên) dịch lỗi thô sang lời
+    thường: mất mạng, hết hạn đăng nhập Google, bị giới hạn tốc độ, Drive đầy, lệch giờ,
+    thiếu rclone/config, ổ đầy, robocopy lỗi. Tin ghi "Lỗi lạ" (`error_unknown`) → thêm
+    một mục vào `errors`.
+  - **Config (chứa token, NGOÀI repo):** `%APPDATA%\GuLibrary\notify.json`
+    (`provider` = `zalo`/`telegram`, `token`, `chat_id`). Không có file = tắt cảnh báo,
+    task chạy y như cũ. State cạnh log: `_print-sync.state.json`, `_backup.state.json`.
+  - **Setup / gửi thử:** `scripts\notify-setup.ps1` (thêm `-Test` để chỉ gửi thử). Lấy
+    `chat_id` qua `getUpdates`: **phải nhắn bot đúng lúc script đang "Waiting for a
+    message"** — Zalo chỉ trả tin đến *trong lúc* đang chờ, tin nhắn trước đó không thấy.
+  - Cảnh báo hỏng → log `WARN notify failed`, **không bao giờ làm task fail**.
+  - **Giới hạn 7 ngày — CHƯA chứng minh.** Zalo OA chỉ được tự nhắn trong 7 ngày kể từ
+    lần cuối người dùng nhắn; tài liệu Zalo Bot không nói bot có bị giới hạn y vậy không.
+    Nếu có, bot **không ngừng hoạt động** — chỉ không tự nhắn trước được khi huynh im quá 7
+    ngày; nhắn bot một tin bất kỳ là khung tính lại. Phép thử: tin backup **Chủ nhật
+    11/10/2026** (12 ngày sau lần nhắn bot cuối 29/09) — **không nhắn bot tới hôm đó**.
+    Tin không tới → hoặc trả lời "ok" tin backup mỗi tuần, hoặc đổi `provider` sang
+    `telegram` (cùng dạng API, chỉ đổi config).
 - **Cả 3 Scheduled Task chạy principal S4U** (run-whether-logged-on-or-not) → sống lại
   sau reboot **không cần ai logon**, và headless (session 0, không cửa sổ). Đây chính là
   cái làm "reboot tự dậy" ở §4/§6 thành sự thật. Đổi/thêm task phải giữ S4U; các
@@ -170,7 +177,8 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   xong `rclone sync` folder backup lên Drive `GuLibrary/Backup` (offsite thật, vá ca
   mất-cả-cụm). Lưu ý trung thực: ransomware mã hóa local rồi nhịp sync kế chạy thì bản
   Drive bị đè theo, nhưng Drive trash + version history ~30 ngày vẫn là cửa lùi cuối.
-  Mức này chấp nhận đủ.
+  Mức này chấp nhận đủ. Mỗi lượt xong bot Zalo nhắn "Đã backup xong rồi nha huynh!" (§3)
+  — **Chủ nhật không thấy tin thì đi kiểm**.
 - **`_print/` (Prod) → Drive `GuLibrary/Di-in`, mirror mỗi ~15 phút** (chính là M9
   mức A, về sớm không cần đụng app/worker): folder Drive luôn = hàng đợi cần in hiện
   tại — Gú tick "Xong" là file rời cả Drive; share link viewer cho người in một lần
@@ -215,8 +223,22 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   không nói lên rclone còn sống. Kiểm `D:\GuLibrary-Prod\_print-sync.log` / `_backup.log`
   và `Get-ScheduledTask GuLibraryPrintSync,GuLibraryBackup | Get-ScheduledTaskInfo |
   Select State,LastTaskResult` (LastTaskResult `0` = OK). Test auth tay: `rclone lsd gdrive:`.
-  Từ v0.17.0 lỗi kéo dài sẽ tự báo qua Zalo (§3). **Không nhận được tin `OK` backup Chủ
-  nhật** = kiểm cả kênh cảnh báo: `scripts\notify-setup.ps1 -Test` + tìm `WARN notify` trong log.
+  Từ v0.17.0 lỗi kéo dài sẽ tự báo qua Zalo (§3).
+- **Nhận tin ⚠️ "… đang bị lỗi" trên Zalo:** làm theo dòng **"Cách xử lý"** trong tin;
+  dòng "Lỗi gốc" là nguyên văn lỗi, dòng "Log" là file cần mở. Hay gặp nhất:
+  *mất mạng* → thường tự hết, chờ tin ✅; *hết hạn đăng nhập Google* → trên mini PC chạy
+  `rclone config reconnect gdrive:` rồi đăng nhập lại; *lệch giờ* → mục đồng hồ ngay dưới.
+  Tin ghi **"Lỗi lạ"** → mở log, rồi thêm một mục vào `errors` trong
+  `scripts\notify-messages.json` để lần sau tin tự giải thích.
+- **Nhận tin 🔌 "Mini PC đã ngừng chạy…" hoặc "…không gửi được cảnh báo":** máy đã tự
+  chạy lại, thường không phải làm gì. Kiểm thêm nếu: lặp lại nhiều lần (điện/mạng nhà
+  chập chờn → cân nhắc UPS cho mini PC + router), hoặc báo *không khởi động lại* (máy bị
+  cho sleep → tắt sleep trong Power Options; task bị tắt → `Get-ScheduledTask
+  GuLibraryPrintSync` phải `Ready`).
+- **Chủ nhật không thấy tin "Đã backup xong…":** kiểm theo thứ tự — (1) `_backup.log` có
+  lượt chạy Chủ nhật không, `backup failed` gì; (2) kênh cảnh báo: `scripts\notify-setup.ps1
+  -Test` + tìm `WARN notify` trong log; (3) mini PC có đang chạy không (đã cúp điện qua
+  03:00 Chủ nhật thì task chạy bù lúc máy lên lại nhờ `StartWhenAvailable`).
 - **`_print-sync.log` lặp `ERROR sync failed: ... NOTICE: Time may be set wrong` — file
   nằm trong `_print/` mà không lên Drive:** đã gặp thật (2026-09-21 → 09-26, 6 ngày không
   sync được lần nào). **Đồng hồ Atomman lệch**, không phải lỗi Drive/OAuth — `rclone lsl
@@ -274,12 +296,20 @@ dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài 
   **Chất lượng `units[]` giờ nhìn thấy được bằng mắt thường**, không còn là dữ liệu nằm im
   — đây là lý do cả ba beat vừa rồi đều đáng làm.
 - Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
-  v0.16.1 vá lỗi script rclone dừng vì một dòng NOTICE (sự cố lệch giờ 09/2026, §6);
-  v0.17.0 thêm cảnh báo qua Zalo Bot (§3), đã setup và nhận tin thử 2026-09-29; v0.18.0 tin tiếng Việt ghi rõ lỗi gì + cách xử; v0.19.0 báo bù sau mất mạng/cúp điện.
   **Không còn nợ hạ tầng.** Beat gần đây: ảnh→PDF 1 trang (v0.12.0), archive gốc
   `.doc`/`.ppt` thay vì xóa (v0.13.0), dựng lại cấu trúc slide (v0.14.0),
   chuyển font cũ VNI→Unicode (v0.15.0),
   chuẩn hóa text mọi đường vào (v0.16.0).
+- **Loạt vận hành 09/2026 (v0.16.1 → v0.19.0), xuất phát từ sự cố `_print/` không lên Drive
+  6 ngày (21→26/09):** đồng hồ Atomman lệch + script dừng vì một dòng NOTICE (§6). Đã:
+  sửa nguồn giờ (`time.google.com`), vá script chỉ phán theo exit code (v0.16.1), thêm
+  cảnh báo Zalo (v0.17.0, setup + nhận tin thử 29/09), tin tiếng Việt ghi rõ lỗi gì + cách
+  xử (v0.18.0), báo bù sau mất mạng/cúp điện (v0.19.0). Bài học: **tự-thử-lại thôi chưa
+  đủ** — sync chết 6 ngày mà không ai biết, vì lỗi chỉ nằm trong log.
+- **Đang treo — phép thử giới hạn 7 ngày của Zalo Bot:** tin backup Chủ nhật **04/10**
+  (5 ngày sau lần nhắn bot cuối) và **11/10** (12 ngày). Tin 11/10 tới → Zalo Bot không giới
+  hạn, ghi kết luận vào §3. Không tới → chọn: trả lời bot mỗi tuần, hoặc chuyển Telegram.
+  **Không nhắn bot từ 29/09 tới 11/10.**
 - **Nợ Phase 2 "re-extract nguồn `.doc`/`.ppt` đã archive" — ĐÃ TRẢ (v0.14.0), nhưng khác
   cách đặt cọc.** Đo trước khi làm cho ra ba điều không lường:
   1. `.doc` **không** degrade — hai bộ luật `.doc` vẫn parse ra `legal` đủ 1717/912 unit.
