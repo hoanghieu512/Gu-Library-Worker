@@ -3,8 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
-  bắt kịp main** · OCR worker v0.20.1 đã verify phía app trên QA, không cần bản app mới ·
+- **App** *(Mac ghi dòng này)*: **v1.40.0 trên main** (verify dGen1 + UBS1) · **Prod (máy Gú) đang
+  chạy v1.39.2 — CHƯA lên v1.40.0** · OCR worker v0.20.1 đã verify phía app trên QA ·
   cập nhật 2026-10-04
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
@@ -463,6 +463,27 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.40.0 — nhãn kết quả mang Điều + sheet Tìm-trong-tài-liệu giữ câu tra (04/10).** Hai việc
+  rút ra lúc verify OCR; huynh chốt làm luôn dù chưa có góp ý của Gú.
+  - **Nhãn:** "Khoản 2 · trang 38" → **"Khoản 2 · Điều 2 · trang 38"** (Điều nào cũng có Khoản 2).
+    `displayLabel()` ghép `label` + tổ tiên trong `path` **đi lên tới Điều gần nhất**; không có Điều
+    phía trên thì giữ nguyên (không kéo "Chương" vào, và path lạ của worker kiểu heading "Chương II"
+    dưới "Chương I" vô hại). Ghép lúc dựng chỉ mục → **`SCHEMA` 2 → 3, mọi máy tự dựng lại MỘT lần**
+    ở lần đầu vào màn Tìm sau khi cập nhật. **Báo trước cho Gú** kẻo tưởng app lỗi.
+  - **Giữ câu tra:** thân sheet bị gỡ mỗi lần đóng (kể cả sau khi chạm kết quả) nên câu tra mất →
+    đưa câu tra ra ngoài, **nhớ theo từng tài liệu trong lần mở Viewer đó**; mở lại với câu cũ thì
+    KHÔNG bật bàn phím để kết quả hiện ngay. Màn Tìm toàn kho (tab dưới) vốn đã giữ — không đổi.
+  - **Verify 2 máy:** dGen1 + UBS1 — "dac xa" trong Luật SĐ BLHS 2025 ra 8 đoạn nhãn "Khoản N ·
+    Điều 2", chạm → nhảy đúng trang, mở lại sheet còn nguyên câu tra + 8 kết quả.
+  - **A/B dựng lại cả kho trên UBS1 (cách đo nhẹ: chụp màn ~1 s/lần, không `dumpsys`):** v1.39.2
+    **22,1 / 18,7 s** · v1.40.0 **18,8 / 18,8 s** → **không chậm đi**. *Bẫy đo:* lượt đầu đo kèm
+    `dumpsys meminfo` mỗi ~0,15 s + `screencap` liên tục ra **26,5 s** — chính công cụ đo đè lên con
+    T616. Số "14,0 s" của spike 05/09 đo TRONG code, không gồm vẽ tiến độ + ghi IndexedDB, nên không
+    so thẳng với số tính từ lúc chạm tab.
+  - **Bẫy test UBS1:** Gboard **tự sửa chữ** khi `adb input text` ("dieu"→"die", "duoc"→"doc") →
+    câu tra méo, ra 0 đoạn. Dùng câu ngắn, hoặc kiểm ô nhập trên ảnh chụp trước khi kết luận.
+  - CHANGELOG viết bù 1.37.0 → 1.39.2 (trước chỉ ghi ở đây).
+
 - **OCR trang ảnh — Mac verify phía app trên QA (04/10), KHÔNG cần bản app mới.** Worker
   v0.20.1 ghi lại sidecar với chữ OCR (unit `"ocr": true`, hợp đồng ở
   `gu-library-sidecar-schema.md` mục "Unit từ OCR", commit `0ced566`). App v1.39.2 ăn thẳng: chỉ mục
