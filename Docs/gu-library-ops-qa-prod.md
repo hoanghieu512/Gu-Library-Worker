@@ -4,7 +4,8 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
-  bắt kịp main** · cập nhật 2026-09-08
+  bắt kịp main** · OCR worker v0.20.1 đã verify phía app trên QA, không cần bản app mới ·
+  cập nhật 2026-10-04
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
 
@@ -462,6 +463,45 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **OCR trang ảnh — Mac verify phía app trên QA (04/10), KHÔNG cần bản app mới.** Worker
+  v0.20.1 ghi lại sidecar với chữ OCR (unit `"ocr": true`, hợp đồng ở
+  `gu-library-sidecar-schema.md` mục "Unit từ OCR", commit `0ced566`). App v1.39.2 ăn thẳng: chỉ mục
+  thấy sidecar đổi `size:lastModified` → tự tách từ lại đúng tài liệu đó; unit còn câu đánh dấu vẫn
+  bị loại theo tiền tố; `imageOnly` chỉ đếm tài liệu KHÔNG có unit đọc được nào nên tài liệu LẪN
+  (vài trang OCR hụt) không bị đếm là ảnh.
+  - **Verify trên dGen1, kho QA — 7/7 ĐẠT** (gõ không dấu vì `adb input text` không gõ được chữ có
+    dấu; có dấu hay không đều qua cùng `fold()` nên một đường code):
+    1. "tài liệu là ảnh" **13 → 1** (còn `Báo giấy/4_5_2026`, chữ rác bị cổng OOV giữ đánh dấu).
+    2. Giáo trình HSPC 398 trang, Tìm-trong-tài-liệu "nguyen tac phap che" → **13 đoạn** — khớp ĐÚNG
+       số đếm độc lập từ sidecar (worker ước ~11) · chạm → **trang 21/398**, đúng đoạn trên trang.
+    3. Không dấu ra cùng kết quả.
+    4. Luật SĐ BLHS 2025 "dac xa" → **8 đoạn** tr.37–39 · chạm "Khoản 2 · trang 38" → **38/48**.
+    5. NQ Đ65 "an treo" → **50+** (sidecar 53, trần 50) · nhãn "Điều 1 · trang 2", "Khoản 3 · trang 3"
+       → cấu trúc Điều/Khoản nhận từ chữ OCR hiện được.
+    6. Ảnh báo 14/4 "trach nhiem hinh su" → **1 đoạn trang 1** (đoạn trích còn "vê việc", "đôi với" —
+       lỗi dấu OCR, tra không dấu không ảnh hưởng).
+    7. **Hiệu năng:** dựng lại CẢ KHO từ đầu (cần gạt Cài đặt) **~19,5 s / 180 tài liệu**; renderer
+       đỉnh **560 MB thoáng qua** ở cuối lúc dựng → ổn định tổng (chính + renderer) **~371 MB =
+       +112 MB so Home** (05/09 đo 433 MB — điều kiện không y hệt, chỉ kết luận được "không tệ
+       hơn"); logcat không lmkd/OOM/crash. Tra "ton thuong than kinh" trong Giám định (6.820 unit)
+       ra tức thì, khớp cả chữ OCR sai dấu "Tôn thương" lẫn "Tổn thương". Cuộn kết quả: 359 khung,
+       giật **2,8%**, p95 **21 ms**. Mở app thường: cập nhật chỉ mục ~1,3 s.
+    Kèm: 0 ký tự `Ð`/`ð` trong 12 sidecar OCR (chốt map `Ð→Đ` của Mac có hiệu lực).
+  - **Lệch với mô tả của worker — đều KHÔNG phải lỗi:** (a) app **không tô sáng trên trang** — pdf.js
+    vẽ canvas, app chưa dùng `bbox` ở đâu; chạm kết quả chỉ nhảy trang; (b) nhãn kết quả chỉ in `label`
+    ("Khoản 2"), không in `path` ("· Điều 2").
+  - **Prod:** Atomman bật 04/10 12:41, xong 13:08 — 677/680 trang có chữ, 3 giữ đánh dấu (đúng 3 trang
+    như QA), 11/12 sidecar ghi lại, "tài liệu là ảnh" Prod sẽ **12 → 1**. Máy Gú chỉ phải tách từ lại
+    11 file (KHÔNG dựng cả kho) — theo số dGen1 là ổn. **Chưa verify tận tay trên máy Gú.**
+  - **Việc phía app có thể làm sau (CHƯA làm, chờ tín hiệu thật từ Gú):** nhãn kết quả hiện `path`
+    ("Khoản 2 · Điều 2"); gắn nhãn "chữ nhận dạng tự động" cho kết quả `ocr: true`; trên màn vuông
+    dGen1 bàn phím che quá nửa sheet Tìm-trong-tài-liệu, và **đóng sheet là mất câu tra**.
+  - **Bẫy lúc test (máy dGen1):** (a) màn đen do WebView không bind được tiến trình con lặp lại sau
+    chuỗi `force-stop` → reboot là hết (bẫy đã biết, xem v1.38.0 verify); (b) reboot xong máy lại
+    hỏi quyền USB debugging — huynh bấm Cho phép rồi mà adb vẫn báo `unauthorized` → **`adb
+    kill-server` rồi chạy lại** mới nhận; (c) phím ESC (`keyevent 111`) **đóng luôn sheet** chứ
+    không chỉ ẩn bàn phím — muốn ẩn bàn phím thì chạm vào dòng "N đoạn khớp".
+
 - **v1.39.2 — tra nhiều chữ BẮT BUỘC LIỀN NHAU (Gú báo qua huynh).** Tra "là công dân" ra cả
   *"Lỗi kỹ thuật **LÀ** lỗi do sai sót… **ĐÁNH** máy… văn bản **CÔNG** chứng"*. Hai lỗi khác nhau
   chồng lên nhau:
