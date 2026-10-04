@@ -6,7 +6,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **App** *(Mac ghi dòng này)*: v1.39.2 trên main · **Prod (máy Gú) đang chạy v1.39.2 — đã
   bắt kịp main** · cập nhật 2026-09-08
 
-- **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA bật, Prod CHƯA) · cập nhật 2026-10-04
+- **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
 
 > **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
 > với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
@@ -690,8 +690,13 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **v0.20.0 — OCR trang ảnh (2026-10-04).** Làm theo spike `Docs/spikes/2026-10-03-ocr-scope-and-engine.md`
   §6 + các chốt của Mac (map `Ð→Đ`/`ð→đ`, field tùy chọn `ocr: true`, cổng < 20 ký tự /
   conf < 60 / OOV > 15 % với từ vựng cố định, chỉ tài liệu có câu đánh dấu, Tesseract best
-  200→300 dpi). **QA:** bật 2026-10-04 01:40 (`workers: 2`), xong 02:10 — 844 trang: 841 ra chữ, 3 giữ đánh dấu (2 trang trắng giáo trình + ảnh báo `4_5_2026` chữ rác); 12/13 sidecar ghi lại; không vòng nào trễ. *Giám định pháp y* phình 47 KB → 2,1 MB (6.820 unit từ bảng) — máy test tách từ lại lâu hơn thường. **Prod: CHƯA bật — chờ Mac verify QA** (tra chữ
-  trong giáo trình 398 trang + nhảy đúng trang); bật thì Luật SĐ BLHS 2025 lên đầu.
+  200→300 dpi). **QA:** bật 2026-10-04 01:40 (`workers: 2`), xong 02:10 — 844 trang: 841 ra chữ, 3 giữ đánh dấu (2 trang trắng giáo trình + ảnh báo `4_5_2026` chữ rác); 12/13 sidecar ghi lại; không vòng nào trễ. *Giám định pháp y* phình 47 KB → 2,1 MB (6.820 unit từ bảng). **Mac verify QA: ĐẠT** (04/10,
+  dGen1: 13 → 1 tài liệu ảnh, tra có/không dấu khớp, nhảy đúng trang, dựng lại 180 tài liệu
+  ~19,5 s, RAM đỉnh 560 MB, không OOM). **Prod:** bật 04/10 12:41, xong 13:08 — Luật SĐ BLHS
+  2025 xong đầu tiên; 680 trang: 677 ra chữ, 3 giữ đánh dấu (cùng 3 trang như QA); 11/12
+  sidecar ghi lại; 0 lỗi. Một vòng trễ 3 phút (vòng 13:01 dài 3:22 vì 6 ảnh báo OCR hai lần
+  200→300 dpi; ngân sách chỉ chặn *khởi* trang mới) — chỉ ảnh hưởng khi có nhiều ảnh mới
+  dồn một lúc.
   Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ và **đã sửa** (`.venv` chuyển sang
   Python python.org 04/10, xem §3), thử tải sạch ở cả N=2 lẫn N=4.
 - Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.
