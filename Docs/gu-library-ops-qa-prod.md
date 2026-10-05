@@ -848,23 +848,15 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   liệu dính lỗi gồm **12 pdf, 8 pptx, 6 docx** — tức phần lớn vẫn lọt, và tài liệu thêm
   mới cũng sẽ lọt. v0.16.0 chuyển thành một lượt chạy sau mọi nhánh reader. Bài học: cắm
   bản vá vào đúng cái nhánh nơi mình *tình cờ tìm thấy* lỗi thì bỏ sót mọi đường vào khác.
-- **OCR — số đo mới, mở lại món đã tưởng đóng (2026-09-05).** Con số cũ "1/178 (~0,6%)"
-  đã lỗi thời (đo trước v0.12.0, trước khi có ảnh→PDF). Đo lại, tiêu chí: sidecar hợp lệ
-  mà **mọi unit đều mang `IMAGE_PAGE_MARKER`**:
-
-  | | Tài liệu | Trang |
-  |---|---|---|
-  | QA | 13/178 (7,3%) | 844/12.136 (7,0%) |
-  | **Prod** | **12/113 (10,6%)** | **680/9.096 (7,5%)** |
-
-  Đối chiếu với lịch sử đọc thật (`_reading-*.json`): Prod **5/12** tài liệu ảnh đã từng
-  được mở, và mở gần đây (7/2026) — trong đó `2. Luật sửa đổi BLHS 2025` đọc tới trang
-  **38/48**, `GT LUAT HINH SU PHAN CHUNG` 398 trang, `Giám định pháp y, tâm thần` 164
-  trang. 7 tài liệu còn lại (6 ảnh báo giấy 1 trang + 1 NQ 6 trang) chưa mở bao giờ.
-  Quy mô kỹ thuật: 680 trang, ~1,78 MP/trang, 146,7 MB. **Tesseract chưa cài trên
-  Atomman.** *Ước lượng (CHƯA đo, chỉ để cân nhắc): Tesseract `vie` cỡ 1–3 s/trang ở độ
-  phân giải này → ~12–35 phút cho một lượt toàn kho Prod, cộng công cài Tesseract +
-  traineddata tiếng Việt.* Chưa xây gì — chờ huynh quyết.
+- **OCR — ĐÃ ĐÓNG (đo 05/09 → spike 03/10 → v0.20.0 chạy thật 04/10).** Lịch sử: con số cũ
+  "1/178 (~0,6%)" lỗi thời (đo trước v0.12.0, trước khi có ảnh→PDF); đo lại 05/09 theo tiêu
+  chí *mọi unit mang `IMAGE_PAGE_MARKER`* ra QA 13 tài liệu / 844 trang, Prod 12 tài liệu /
+  680 trang, Prod 5/12 tài liệu ảnh từng được mở (Luật SĐ BLHS 2025 đọc tới 38/48). Spike
+  `Docs/spikes/2026-10-03-ocr-scope-and-engine.md` đo thật thay cho ước lượng "1–3 s/trang,
+  12–35 phút": Tesseract `vie` best **1,7–3,1 s/trang**, cả tồn Prod **~25 phút** một tiến
+  trình; PaddleOCR loại (từ điển thiếu chữ Việt). Kết quả: **cả hai kho đã OCR xong** — QA
+  841/844, Prod 677/680 trang ra chữ (chi tiết ở mục v0.20.0 phía trên); tài liệu ảnh mới
+  được OCR tự động sau bước nhập.
 
 ### 8.3 Nguyên tắc chung
 
