@@ -125,8 +125,11 @@ into its `tessdata`.
   ≥ 60 and ≤ 15 % words outside `data/ocr_lexicon.txt` (a fixed list, rebuilt
   only on purpose with `scripts/build-ocr-lexicon.py`).
 - OCR units carry `"ocr": true` (optional field, schema version unchanged).
-- **Time budget:** page jobs stop being started after `--ocr-budget` seconds
-  (default 120, shared by all kho) and the next pass continues. Each finished
+- **Time budget:** `--ocr-budget` seconds per pass (default 120, shared by all
+  kho); the next pass continues. A page already running is never cut short, and a
+  newspaper photo (OCR'd at 200 then 300 dpi) can take 60-90 s, so new pages
+  start only in the first budget − 45 s (75 s by default) — the pass then ends by
+  ~165 s and never skips the next 3-minute trigger. Each finished
   page is cached in `<kho>_ocrcache\pages\` (keyed by PDF size+mtime and engine),
   so nothing is OCR'd twice and an interrupted document resumes.
 - **One write per document:** the sidecar is rewritten only when every page is

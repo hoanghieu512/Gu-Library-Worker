@@ -7,7 +7,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   chạy v1.40.1 — CHƯA lên v1.41.0** (lần đầu mở màn Tìm sẽ dựng lại chỉ mục ~20 s) ·
   cập nhật 2026-10-07
 
-- **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
+- **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-06
 
 > **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
 > với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
@@ -85,7 +85,9 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **OCR trang ảnh (v0.20.0) — BẬT RIÊNG TỪNG KHO, không cần đăng ký lại task.** Công tắc:
   file `<kho>_ocrcache\ocr.json` = `{"enabled": true, "workers": 2}` (thư mục anh em với
   `kho_archive`, ngoài Syncthing); không có file = tắt, không ghi log. Chạy **sau** bước nhập
-  mỗi vòng, tối đa ~120 s (`--ocr-budget`), hết giờ thì vòng sau làm tiếp; tài liệu Gú đã
+  mỗi vòng, ngân sách ~120 s (`--ocr-budget`) nhưng **chỉ khởi trang mới trong 75 s đầu**
+  (v0.20.2 — ảnh báo OCR hai lần mất 60–90 s/trang, chừa biên để vòng luôn xong trước
+  ~165 s, không bỏ lần kích hoạt kế), hết giờ thì vòng sau làm tiếp; tài liệu Gú đã
   mở được làm trước (đọc sâu nhất trước). Engine Tesseract 5.4 + `vie` bản best, cài không
   Admin ở `%LOCALAPPDATA%\Programs\Tesseract-OCR`; thiếu → `ocr skipped: …` 1 dòng/vòng,
   nhập file không ảnh hưởng. Mỗi tài liệu ghi sidecar **đúng một lần** khi đủ trang (cache
@@ -879,8 +881,8 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   ~19,5 s, RAM đỉnh 560 MB, không OOM). **Prod:** bật 04/10 12:41, xong 13:08 — Luật SĐ BLHS
   2025 xong đầu tiên; 680 trang: 677 ra chữ, 3 giữ đánh dấu (cùng 3 trang như QA); 11/12
   sidecar ghi lại; 0 lỗi. Một vòng trễ 3 phút (vòng 13:01 dài 3:22 vì 6 ảnh báo OCR hai lần
-  200→300 dpi; ngân sách chỉ chặn *khởi* trang mới) — chỉ ảnh hưởng khi có nhiều ảnh mới
-  dồn một lúc.
+  200→300 dpi; ngân sách chỉ chặn *khởi* trang mới) — **đã sửa ở v0.20.2** (chỉ khởi trang
+  mới trong 75 s đầu).
   Gate trước Prod đã chạy: nguyên nhân launcher kẹt đã rõ và **đã sửa** (`.venv` chuyển sang
   Python python.org 04/10, xem §3), thử tải sạch ở cả N=2 lẫn N=4.
 - Worker **v0.19.0** — hai task rclone đã triển khai và đang chạy; OAuth Drive đã setup.

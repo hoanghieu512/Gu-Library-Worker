@@ -46,6 +46,7 @@ CONFIG_NAME = "ocr.json"
 DEFAULT_WORKERS = 2
 MAX_WORKERS = 8
 DEFAULT_BUDGET_S = 120.0
+SLOW_PAGE_MARGIN_S = 45.0  # stop starting pages this early: a slow page still fits the pass
 LOCK_STALE_S = 45 * 60      # longer than the task's 30-minute execution limit
 CACHE_VERSION = 1
 _RENDER_LOCK = threading.Lock()   # MuPDF is not thread-safe; rendering is short
@@ -547,7 +548,12 @@ def run_stage(kho_roots: list[Path], budget_s: float, label_of: Callable[[Path],
               ocr_fn: Callable[..., PageOcr] = ocr_page,
               clock: Callable[[], float] = time.monotonic) -> None:
     """Run OCR for every opted-in kho, sharing one time budget for the pass."""
-    deadline = clock() + budget_s
+    # The budget only stops *starting* pages; a page already running finishes.
+    # A newspaper photo is OCR'd twice (200 then 300 dpi) and can take 60-90 s,
+    # so new pages start only in the first `budget - SLOW_PAGE_MARGIN_S` seconds:
+    # with the default 120 s the pass ends by ~165 s and never skips the next
+    # 3-minute trigger. A small budget keeps at least half for starting pages.
+    deadline = clock() + max(budget_s - SLOW_PAGE_MARGIN_S, budget_s / 2)
     engine: Engine | None = None
     reason = ""
     looked = False

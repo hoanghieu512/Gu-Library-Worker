@@ -297,3 +297,23 @@ def test_real_tesseract_end_to_end(tmp_path):
         x0, y0, x1, y1 = u["bbox"]
         assert 0 <= x0 < x1 <= 595.3 and 0 <= y0 < y1 <= 842
     assert sorted(p.name for p in js.parent.iterdir()) == sorted([js.name, pdf.name])
+
+
+def test_pages_start_only_until_budget_minus_slow_page_margin(tmp_path):
+    # 120 s budget, 10 s per page, one worker: pages start at t=0..70 (< 120-45),
+    # so the last one ends by ~80 s instead of running on past the budget
+    paths, pdf, js = _make_kho(tmp_path, pages=20, workers=1)
+    clock = FakeClock()
+    fake = FakeOcr(clock=clock, tick=10.0)
+    run_stage([paths.kho_root], 120, lambda p: "T", find=lambda: (FAKE_ENGINE, ""),
+              ocr_fn=fake, clock=clock)
+    assert fake.calls == list(range(1, 9))
+
+
+def test_small_budget_keeps_half_for_starting_pages(tmp_path):
+    paths, pdf, js = _make_kho(tmp_path, pages=20, workers=1)
+    clock = FakeClock()
+    fake = FakeOcr(clock=clock, tick=10.0)
+    run_stage([paths.kho_root], 40, lambda p: "T", find=lambda: (FAKE_ENGINE, ""),
+              ocr_fn=fake, clock=clock)
+    assert fake.calls == [1, 2]                      # starts allowed while t < 20

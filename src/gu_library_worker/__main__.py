@@ -8,7 +8,7 @@ from pathlib import Path
 from .config import Paths
 from .convert import to_pdf
 from .logsetup import kho_logging
-from .ocr_stage import DEFAULT_BUDGET_S, run_stage
+from .ocr_stage import DEFAULT_BUDGET_S, SLOW_PAGE_MARGIN_S, run_stage
 from .scan import scan_once
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -22,9 +22,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
                         "or set the GULIB_SOFFICE env var)")
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--ocr-budget", type=float, default=DEFAULT_BUDGET_S, metavar="SECONDS",
-                   help="time the OCR stage may spend starting page jobs this pass, "
-                        f"shared by all kho (default {DEFAULT_BUDGET_S:.0f}). OCR runs only "
-                        "for a kho with <kho>_ocrcache/ocr.json set to enabled.")
+                   help="OCR time per pass, shared by all kho (default "
+                        f"{DEFAULT_BUDGET_S:.0f}). New pages start only in the first "
+                        f"BUDGET-{SLOW_PAGE_MARGIN_S:.0f}s so a slow page started last still "
+                        "ends inside the pass. OCR runs only for a kho with "
+                        "<kho>_ocrcache/ocr.json set to enabled.")
     p.add_argument("--skip-intake", action="store_true",
                    help="skip the _inbox scan and run only the OCR stage "
                         "(manual backfill runs)")

@@ -5,6 +5,14 @@ feature/milestone = minor, sửa lỗi + hạ tầng vận hành nhỏ = patch. 
 cập nhật file này ngay trong cùng session (song song với `pyproject.toml` +
 `src/gu_library_worker/__init__.py`).
 
+## [0.20.2] — 2026-10-06 — OCR chừa biên cho trang chậm, vòng không còn quá 3 phút
+### Fixed
+- **Vòng có nhiều ảnh báo có thể dài quá 3 phút và bỏ một lần kích hoạt.** Ngân sách OCR (120 s) chỉ chặn việc *khởi* trang mới; trang đang chạy thì chạy cho xong. Ảnh báo giấy được OCR hai lần (200 rồi 300 dpi), mỗi trang 60–90 s, nên một ảnh khởi ở giây ~115 kéo vòng tới ~200 s. Đo thật khi bật Prod 04/10: vòng 13:01 dài 3:22 → `IgnoreNew` bỏ lần kích hoạt 13:04, vòng sau cách 6 phút (QA: hai vòng có ảnh dài 148 s và 139 s, chưa quá). Nay trang mới chỉ được khởi trong `ngân sách − 45 s` đầu (75 s với mặc định), tối thiểu nửa ngân sách: trang chậm nhất khởi cuối cùng vẫn xong trước ~165 s, vòng không bao giờ lấn lần kích hoạt kế.
+### Notes
+- Đổi một dòng tính hạn chót trong `run_stage` (`SLOW_PAGE_MARGIN_S = 45`); cache, thứ tự ưu tiên, cách ghi sidecar không đổi. Bước nhập vẫn chạy trước và không bị ảnh hưởng; task PrintSync/Backup là task riêng.
+- Đánh đổi: mỗi vòng OCR ít trang hơn ~35–40% (scan thường ~95 → ~60 trang/vòng) → một scan 400 trang mới mất ~40 phút thay vì ~25. Không đáng kể vì tồn đã OCR xong.
+- 314 test qua (thêm 2: ngân sách 120 s chỉ khởi trang tới giây 75; ngân sách nhỏ vẫn còn nửa thời gian).
+
 ## [0.20.1] — 2026-10-04 — `vnifix` không đụng chữ OCR
 ### Fixed
 - **`vnifix` có thể đổi sai chữ OCR.** v0.20.0 cố ý không giải mã VNI cho chữ OCR (`ocr.clean_text`), nhưng `vnifix` vẫn chạy `normalize_text` (có giải mã VNI) lên **mọi** unit, kể cả `ocr: true`. Đo dry-run trên QA ngay sau khi OCR: vnifix sẽ nhắm **6/12 sidecar OCR** và sửa 7 unit, coi nhiễu OCR là VNI — `(haï)`→`(hạ)`, `uï`→`ụ`, `lIïï`→`lỊï`, `LEøÄ`→`LÈÄ`. Ngoài đổi sai, còn giành file với giai đoạn OCR (giáo trình còn câu đánh dấu nên OCR dựng lại từ cache và ghi đè ngược). Nay `vnifix` bỏ qua unit `ocr: true` ở cả bước chọn đối tượng, chuyển đổi lẫn đếm phần sót; unit OCR được chép nguyên từng trường. Dry-run lại: 0 sidecar OCR bị nhắm.
