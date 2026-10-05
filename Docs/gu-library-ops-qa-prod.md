@@ -3,9 +3,9 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.40.0 trên main** (verify dGen1 + UBS1) · **Prod (máy Gú) đang
-  chạy v1.39.2 — CHƯA lên v1.40.0** · OCR worker v0.20.1 đã verify phía app trên QA ·
-  cập nhật 2026-10-04
+- **App** *(Mac ghi dòng này)*: **v1.40.1 trên main** (verify UBS1 + dGen1) · **Prod (máy Gú) đang
+  chạy v1.40.0 — CHƯA lên v1.40.1** (bản vá tìm ký hiệu, không phải dựng lại chỉ mục) ·
+  cập nhật 2026-10-05
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
 
@@ -463,6 +463,28 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.40.1 — ký hiệu dính vào chữ/số phải khớp ĐÚNG (huynh bắt được, 05/10).** Tra "35%" trong
+  Luật doanh nghiệp 2020 (PLCTKD/VBQPPL) ra toàn "35"; màn Tìm toàn kho còn không hiện file đó.
+  "15/" ra số 15 trơn; "15/5" lẫn "15.5" / "15,5cm".
+  - **Hai nguyên nhân chồng nhau:** (1) `tokenize()` vứt mọi ký hiệu → "35%" chỉ còn `35`, lại khớp
+    TIỀN TỐ (35, 350, 135…); "15/5" = "15.5" = `15 5`. (2) Màn Tìm toàn kho dừng ở **600 ứng viên
+    theo THỨ TỰ KHO** (`CANDIDATE_CAP`) → lấp đầy bằng "35" trơn trước khi tới PLCTKD.
+  - **Sửa (hướng A, huynh chốt):** ký hiệu DÍNH vào chữ/số (`% / - + & ° §`; `. , :` chỉ khi nằm
+    GIỮA hai chữ/số) → `literalOf()` dựng regex khớp đúng trên văn bản đã bỏ dấu; đoạn không chứa
+    ký hiệu bị loại TRƯỚC khi tính vào trần → hết bị cắt theo thứ tự kho. **Chỉ mục KHÔNG đổi** →
+    không dựng lại. "." / "," đứng một mình vẫn rỗng; dấu câu cuối câu ("điều 5.") và ngoặc kép
+    bỏ qua như cũ; "35 %" / "15 / 5" có dấu cách vẫn khớp.
+  - **Verify 2 máy (số y hệt nhau):** "35%" toàn kho **28 đoạn, đoạn nào cũng có 35%**, có Luật
+    doanh nghiệp tr.9/74/80/84/95 (trước: 50+ đoạn "35" trơn, không có file đó) · trong Luật doanh
+    nghiệp **6 đoạn** đúng 6 điều khoản (trước 11, lẫn) · "15/5" **11** (trước 17, đoạn đầu là
+    "15.5.") · "15.5" **2** · "15/" toàn dạng 15/8/2022, 15/4/2025…
+  - **Đánh đổi / chưa làm:** nghiêm — "15/5" không khớp "15/05"; tô sáng đoạn trích chưa tô "%".
+    Tra số TRƠN rất phổ biến ("35") vẫn có thể bị trần 600 cắt theo thứ tự kho ở màn Tìm toàn kho —
+    món xếp hạng riêng, chờ khi gặp.
+  - **Mẹo test:** trên UBS1 (WebView mới) từng dòng kết quả lộ ra `uiautomator dump` dạng
+    `content-desc="Mở <tài liệu> tại trang N"` → đếm/kiểm không cần cuộn chụp; dGen1 (WebView 124)
+    KHÔNG lộ, phải chụp. `adb shell "input text '35%'"` gõ được dấu %.
+
 - **v1.40.0 — nhãn kết quả mang Điều + sheet Tìm-trong-tài-liệu giữ câu tra (04/10).** Hai việc
   rút ra lúc verify OCR; huynh chốt làm luôn dù chưa có góp ý của Gú.
   - **Nhãn:** "Khoản 2 · trang 38" → **"Khoản 2 · Điều 2 · trang 38"** (Điều nào cũng có Khoản 2).
