@@ -4,8 +4,8 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **v1.40.1 trên main** (verify UBS1 + dGen1) · **Prod (máy Gú) đang
-  chạy v1.40.0 — CHƯA lên v1.40.1** (bản vá tìm ký hiệu, không phải dựng lại chỉ mục) ·
-  cập nhật 2026-10-05
+  chạy v1.40.1 — bắt kịp main** (huynh xác nhận 06/10) ·
+  cập nhật 2026-10-06
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.1 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-04
 
@@ -419,9 +419,10 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   - **File mồi test CÓ CHỦ ĐÍCH (đừng "sửa"):** `Chưa phân loại/Giám định pháp y, tâm thần.pdf`
     (scan JPEG2000/JPX) — huynh cố ý để trong kho QA để test ca pdf.js render TRẮNG. Thấy pane
     trắng với file này là ĐÚNG, không phải bug.
-  - **CHỜ XÁC NHẬN CÓ DÙNG — "Chọn hết / Bỏ chọn hết" (v1.32.0):** đây là mục **DUY NHẤT** của cả
-    Tuyến B **không truy được về friction quan sát từ Gú** — nó đến từ prototype, không từ việc Gú
-    kêu. Cần theo dõi vài tuần: nếu Gú không đụng thì **GỠ**, đừng để tồn như tính năng chết.
+  - **ĐÃ XÁC NHẬN — GIỮ "Chọn hết / Bỏ chọn hết" (v1.32.0)** *(huynh hỏi Gú, 06/10: Gú có dùng).*
+    Đây từng là mục **DUY NHẤT** của cả Tuyến B **không truy được về friction quan sát từ Gú** — nó
+    đến từ prototype, không từ việc Gú kêu; hẹn theo dõi vài tuần, không dùng thì gỡ. Gú dùng thật →
+    đóng sổ, không gỡ. Đường gỡ dưới đây chỉ còn để tham khảo.
     *Đường gỡ sạch (không gì khác phụ thuộc):* xoá `src/storage/selectAll.ts` + `selectAll.test.ts`,
     xoá khối `IonButtons slot="end"` trong nhánh `selectMode` của header `src/pages/FolderPage.tsx`,
     và 3 biến `visibleDocUris`/`allSelected`/`onToggleAll`. Chế độ chọn-nhiều (B2b) KHÔNG bị ảnh hưởng.
