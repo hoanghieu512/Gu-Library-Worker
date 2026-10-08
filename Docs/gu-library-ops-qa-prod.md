@@ -469,7 +469,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
 - **Bộ test e2e (07–08/10, nhánh `feat/e2e-smoke-suite`) — test khói trên máy thật, KHÔNG đụng app.**
-  Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 4.5 qua OpenRouter; key chỉ ở
+  Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 5.5 qua OpenRouter từ 08/10 — trước đó 4.5; key chỉ ở
   `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 6 test: tìm kiếm ×4, đọc tiếp, chia đôi).
   Hướng dẫn + bẫy: `e2e/README.md`.
   - **Số (UBS1, app v1.41.0):** lần đầu chưa có cache 6/6 · 3 ph 14 s · $0,036 · lần chạy có cache
@@ -479,12 +479,34 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     `useIonViewWillEnter` → test đỏ (bản test cũ vẫn xanh = rỗng), APK thật → xanh.
   - **Chỉ UBS1.** dGen1 0/6: engine force-stop app mỗi test → màn đen WebView (bẫy v1.38.0 verify,
     reboot mới hết). `openrouter/free` không chạy nổi agent (lỗi nhà cung cấp/giới hạn lượt).
+    **Thử lại 08/10 tối từ dGen1 vừa reboot (Haiku): vẫn đỏ** — chỉ MỘT force-stop của `app.open()`
+    ở test đầu là renderer bị từ chối (`process is bad`) → màn đen; `adb install -r` không gỡ được,
+    reboot mới gỡ. Chạy được trên dGen1 phải bỏ relaunch (mất "mỗi test bắt đầu sạch") → giữ chỉ
+    UBS1. Chi tiết + cách gỡ: `e2e/README.md` mục "Máy hỗ trợ".
+  - **Beat dọn sau review (08/10 tối, nhánh `chore/e2e-cleanup`):** preflight phân biệt thiếu adb với
+    không thấy máy; thông báo hết thẻ nói đúng lý do (không kết quả / thẻ 1 đoạn / nhãn trùng);
+    `toTab` bấm back tới khi hết (tối đa 12); mọi `search()` chờ dựng chỉ mục; agent `default` mang
+    luật chỉ-đọc như `explorer`; sửa câu chữ + số lệch trong README/perf doc; unit dùng serial giả;
+    test chia đôi kiểm bằng locator rằng bộ chọn đã biến mất sau bước `act`. Verify UBS1 app 1.41.0:
+    **e2e 6/6 · 2 ph 12–15 s · $0,0034 · Haiku 4.5** (có cache, 2 lượt). Lượt lạnh 5/6: trượt ở bước chọn tài
+    liệu của test chia đôi — lỗi có sẵn, không do beat này (6 lượt lạnh riêng test đó: có/không luật
+    chỉ-đọc đều 1/3 đạt). **Đổi model mặc định sang Haiku 5.5** (`anthropic/claude-haiku-5.5`, rẻ ~10×):
+    UBS1 có cache **e2e 6/6 · 2 ph 8 s · $0,0003 · Haiku 5.5 · app v1.41.0**. Lượt lạnh 5.5: 4/6 — test
+    đọc tiếp đỏ vì lỗi trôi trang slide (dưới), test chia đôi lộ cuộc đua đọc thẻ "Đang đọc dở" trước
+    khi nó nạp (đã sửa) và agent 5.5 cũng nhầm môn là tài liệu (chốt locator bắt được).
   - **Khám phá (`npm --prefix e2e run explore -- "<đề>"`, chỉ-đọc + dấu vân tay kho):** thử 08/10
     trên v1.41.0 — kho không đổi 3/3 lượt, ~$0,4/đề, nhưng phát hiện duy nhất là báo nhầm → **cổng
     không đạt, CHƯA vào quy trình**; giữ để dùng tay. Chi tiết: `Docs/perf/2026-10-07-spike-e2e-agent-test.md`.
   - **Lỗi app lộ ra (backlog, chưa sửa):** thanh chia đôi là `role="separator"` → nút "Tìm"/"Đổi"
     trên thanh không có trong cây trợ năng (trình đọc màn hình cũng không tới được); cùng một file
-    nằm ở hai môn cho hai nhãn "Xem cả" giống hệt; thẻ "Đang đọc dở" không có role/nhãn.
+    nằm ở hai môn cho hai nhãn "Xem cả" giống hệt; thẻ "Đang đọc dở" không có role/nhãn; dòng của
+    bộ chọn tài liệu khi chia đôi (`DocPicker`) là `div onClick` không role/nhãn → agent không phân
+    biệt môn / thư mục / tài liệu (bước chọn tài liệu chạy lạnh chỉ ~1/3 đạt, 08/10).
+  - **LỖI THẬT (ảnh hưởng Gú) — slide trôi trang khi đọc tiếp (lộ ra 08/10, CHƯA sửa).** Tài liệu có
+    trang thấp cỡ nửa khung nhìn (slide 4:3 trên UBS1, vd "Hình sự chung / Slide / 0. GIỚI THIỆU MÔN
+    HỌC"): mỗi vòng rời đi → "Đang đọc dở" mở lại **trôi thêm một trang** (3 → 4 → 5 → 6, tái hiện
+    bằng locator). Gốc: `PdfView` `goToPage(p)` đặt mép trên trang p ở đầu khung nhìn, còn
+    `recompute()` lấy trang ở GIỮA khung nhìn làm trang hiện tại và lưu nó. Ứng viên beat app kế.
 - **v1.41.0 — màn Tìm gom kết quả theo tài liệu (06/10).** Đo "món xếp hạng chờ khi gặp" của
   v1.40.1 ra lỗi thật: `search()` gom tối đa 600 ứng viên (quét 2500) **theo thứ tự kho** rồi mới
   xếp → từ phổ biến chỉ ra môn đứng đầu A→Z (kho QA: "Hình sự chung" = 63% số đoạn). 17/30 câu
@@ -760,6 +782,11 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     **`am force-stop com.android.webview` KHÔNG cứu được. REBOOT máy thì hết.** Chỉ xuất hiện sau
     chuỗi force-stop liên tiếp do adb — người dùng thật không gặp. Gặp lại thì reboot, đừng đi
     tìm bug trong JS.
+    *Sửa 08/10 (e2e thử lại từ dGen1 vừa reboot):* **một** lần `am force-stop` khi renderer đang
+    chạy đã đủ — app mở lại 0,7 s sau thì `ActivityManager` từ chối dựng renderer (`Unable to launch
+    app … SandboxedProcessService0:0: process is bad`). `adb install -r` lại đúng APK cũng **không**
+    gỡ được. Nên "người dùng thật không gặp" chưa chắc: bấm "Buộc dừng" trong Cài đặt dGen1 nhiều
+    khả năng gây y hệt (chưa thử tay). Lỗi nền tảng (ethOS/WebView 124), không phải lỗi app.
   - **BẪY 2 — tên gói WebView KHÁC THEO MÁY.** UBS1 là `com.google.android.webview`, dGen1 là
     `com.android.webview`. Script đo bộ nhớ hard-code tên gói của UBS1 nên trên dGen1 nó không
     tìm được renderer (may là có guard nên nó DỪNG chứ không báo số thiếu). Khớp theo `*webview*`.
