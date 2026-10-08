@@ -7,7 +7,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   chạy v1.40.1 — CHƯA lên v1.41.0** (lần đầu mở màn Tìm sẽ dựng lại chỉ mục ~20 s) ·
   cập nhật 2026-10-07
 
-- **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-06
+- **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
 > **Đồng bộ file này giữa hai repo — KHÔNG copy tay:** `scripts/sync-ops-doc.sh` (gộp 3 chiều
 > với bản của repo bên kia, gốc so sánh tự dò) → xem diff, gỡ conflict nếu có →
@@ -170,13 +170,12 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     `chat_id` qua `getUpdates`: **phải nhắn bot đúng lúc script đang "Waiting for a
     message"** — Zalo chỉ trả tin đến *trong lúc* đang chờ, tin nhắn trước đó không thấy.
   - Cảnh báo hỏng → log `WARN notify failed`, **không bao giờ làm task fail**.
-  - **Giới hạn 7 ngày — CHƯA chứng minh.** Zalo OA chỉ được tự nhắn trong 7 ngày kể từ
-    lần cuối người dùng nhắn; tài liệu Zalo Bot không nói bot có bị giới hạn y vậy không.
-    Nếu có, bot **không ngừng hoạt động** — chỉ không tự nhắn trước được khi huynh im quá 7
-    ngày; nhắn bot một tin bất kỳ là khung tính lại. Phép thử: tin backup **Chủ nhật
-    11/10/2026** (12 ngày sau lần nhắn bot cuối 29/09) — **không nhắn bot tới hôm đó**.
-    Tin không tới → hoặc trả lời "ok" tin backup mỗi tuần, hoặc đổi `provider` sang
-    `telegram` (cùng dạng API, chỉ đổi config).
+  - **Không có giới hạn 7 ngày (đã thử 08/10/2026).** Zalo OA chỉ được tự nhắn trong 7
+    ngày kể từ lần cuối người dùng nhắn; Zalo Bot thì không: 9 ngày sau lần nhắn bot cuối
+    (29/09), tin bot tự gửi vẫn tới. **Không cần nhắn bot định kỳ**, nhắn bot thoải mái.
+  - **Dùng chung bot cho việc khác** (SquarePilot trên Mac dùng để duyệt bài):
+    `Docs/zalo-bot-guide.md`. Worker chỉ *gửi*, không đọc update → bên kia được độc quyền
+    `getUpdates`/webhook; muốn chạy lại `notify-setup.ps1` thì tắt phần nhận bên kia trước.
 - **Cả 3 Scheduled Task chạy principal S4U** (run-whether-logged-on-or-not) → sống lại
   sau reboot **không cần ai logon**, và headless (session 0, không cửa sổ). Đây chính là
   cái làm "reboot tự dậy" ở §4/§6 thành sự thật. Đổi/thêm task phải giữ S4U; các
@@ -896,10 +895,10 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   cảnh báo Zalo (v0.17.0, setup + nhận tin thử 29/09), tin tiếng Việt ghi rõ lỗi gì + cách
   xử (v0.18.0), báo bù sau mất mạng/cúp điện (v0.19.0). Bài học: **tự-thử-lại thôi chưa
   đủ** — sync chết 6 ngày mà không ai biết, vì lỗi chỉ nằm trong log.
-- **Đang treo — phép thử giới hạn 7 ngày của Zalo Bot:** tin backup Chủ nhật **04/10**
-  (5 ngày sau lần nhắn bot cuối) và **11/10** (12 ngày). Tin 11/10 tới → Zalo Bot không giới
-  hạn, ghi kết luận vào §3. Không tới → chọn: trả lời bot mỗi tuần, hoặc chuyển Telegram.
-  **Không nhắn bot từ 29/09 tới 11/10.**
+- **Phép thử giới hạn 7 ngày của Zalo Bot — XONG 08/10:** thử sớm thay vì chờ tin backup
+  11/10: 9 ngày sau lần nhắn bot cuối (29/09) gửi `sendMessage` → `ok:true`, huynh nhận được.
+  **Zalo Bot không giới hạn 7 ngày** (ghi ở §3). Bot sắp dùng thêm cho duyệt bài SquarePilot
+  (Mac) — hướng dẫn bàn giao: `Docs/zalo-bot-guide.md`.
 - **Nợ Phase 2 "re-extract nguồn `.doc`/`.ppt` đã archive" — ĐÃ TRẢ (v0.14.0), nhưng khác
   cách đặt cọc.** Đo trước khi làm cho ra ba điều không lường:
   1. `.doc` **không** degrade — hai bộ luật `.doc` vẫn parse ra `legal` đủ 1717/912 unit.
