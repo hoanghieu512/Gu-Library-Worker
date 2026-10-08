@@ -16,8 +16,8 @@
    → Mỗi lệnh phải tự mang mã draft.
 4. **Mỗi tin tối đa 2000 ký tự** (text và caption ảnh đều vậy) *(docs)*. Draft SquarePilot dài
    ~1600–2100 ký tự, bài đầu tiên đã 2039 NFC → **phải tách thành nhiều tin**.
-5. **`sendPhoto` nhận `photo` dạng string** *(docs)*. Mọi SDK đều truyền URL https; chưa thấy
-   nguồn nào upload file. Muốn gửi PNG local thì **có thể phải có URL public** (§6.2).
+5. **`sendPhoto` CHỈ nhận URL `http(s)`** *(quan sát 08/10)*. Không upload file được, không dùng
+   data-URI được. Muốn gửi PNG local thì **bắt buộc có URL public** (§6.2).
 6. **Nhận tin có 2 cách**: `getUpdates` (long-poll, không có `offset`) hoặc webhook (URL HTTPS
    public + header secret). **Hai cách loại trừ nhau** *(docs)*.
 7. **Không có giới hạn 7 ngày** *(quan sát 08/10)*: 9 ngày sau lần cuối huynh nhắn bot, bot tự
@@ -54,7 +54,7 @@
 |---|---|---|
 | `getMe` | — | Kiểm token |
 | `sendMessage` | `chat_id`, `text` (1–2000), `parse_mode`? (`markdown`\|`html`), `text_styles`? | Trả `{"ok":true,"result":{"message_id":"…","date":<epoch ms>},"error_code":0}` *(quan sát)* |
-| `sendPhoto` | `chat_id`, `photo` (string — URL), `caption`? (1–2000) | Upload file: chưa xác nhận (§6.2) |
+| `sendPhoto` | `chat_id`, `photo` (URL `http(s)`), `caption`? (1–2000) | Body JSON. Trả `result.message_type: "CHAT_PHOTO"` *(quan sát)* — chỉ URL, xem §6.2 |
 | `sendChatAction` | `chat_id`, `action` (`typing` \| `upload_photo`) | Chỉ hiện trạng thái "đang gõ…" |
 | `getUpdates` | `timeout` (string, giây, mặc định 30) | Không có `offset`. Không chạy được khi đang có webhook |
 | `setWebhook` | `url` (HTTPS public), `secret_token` (8–256 ký tự) | localhost / IP nội bộ bị từ chối. URL vẫn được lưu dù verify fail |
@@ -84,6 +84,8 @@ Webhook gửi kèm header `X-Bot-Api-Secret-Token: <secret_token>`. Header sai t
 - **`getUpdates` chỉ trả tin đến TRONG LÚC đang chờ** *(quan sát)*. Tin gửi lúc không ai poll
   thì không lấy lại được. Không có `offset`, nên mỗi tin chỉ về một lần.
   → Poller phải chạy liên tục. Timeout HTTP của client phải lớn hơn `timeout` poll (worker để +15 s).
+- **Gọi lỗi vẫn trả HTTP 200**, ví dụ `{"ok":false,"description":"Bad request: …","error_code":400}`
+  *(quan sát)*. → Phải kiểm `ok`, không dựa vào status HTTP. Lỗi thật nằm ở `description`.
 - **URL có chứa token** → redact token trong mọi log lỗi (`err.message`, URL request).
   Worker không bao giờ in token ra.
 - **Gửi draft thì bỏ `parse_mode`** để Zalo không nuốt `*`, `_`, `#`, `$`. Như vậy chữ hiện ra
@@ -162,18 +164,27 @@ Webhook gửi kèm header `X-Bot-Api-Secret-Token: <secret_token>`. Header sai t
 
 ### 6.2 PNG local → Zalo
 
-- **Thử trước**: gọi `sendPhoto` dạng `multipart/form-data`, field `photo` là file PNG. Chạy được
-  thì không còn vấn đề gì.
-- Nếu không chạy được:
-  - **A. Upload lên object storage** (Cloudflare R2 / S3), public-read hoặc presigned, tên file
-    ngẫu nhiên, tự xóa sau vài ngày.
-    - Ưu: ổn định, không phụ thuộc Mac đang online.
-    - Nhược: thêm credential và một dịch vụ cloud.
-  - **B. Serve PNG từ Mac qua tunnel.** Chỉ hợp lý khi đã chọn webhook ở 6.1.
-    - Ưu: không thêm dịch vụ.
-    - Nhược: chưa biết Zalo có cache ảnh lúc gửi không; nếu không, Mac tắt là ảnh hỏng.
-  - **C. Chỉ gửi text, không gửi ảnh.** Phá US#52 (duyệt trên điện thoại có kèm ảnh).
-- **Đệ nghiêng**: thử multipart trước, không được thì chọn A.
+**Đã thử 08/10 trên bot này** (PNG 540×675):
+
+| Cách gửi | Kết quả |
+|---|---|
+| `multipart/form-data` (`chat_id`, `photo=@file.png`) | ❌ `"The chat_id must not be empty"` — Zalo không đọc multipart |
+| JSON, `photo: "data:image/png;base64,…"` | ❌ `"The photo must start with http:// or https://"` |
+| JSON, `photo: "https://…png"` | ✅ `ok:true`, `message_type: CHAT_PHOTO` |
+
+→ PNG local phải có **URL public** trước khi gửi. Các cách lấy URL:
+
+- **A. Upload lên object storage** (Cloudflare R2 / S3), public-read hoặc presigned, tên file
+  ngẫu nhiên, tự xóa sau vài ngày.
+  - Ưu: ổn định, không phụ thuộc Mac đang online.
+  - Nhược: thêm credential và một dịch vụ cloud.
+  - Chưa thử: Zalo có nhận URL presigned có query string dài không.
+- **B. Serve PNG từ Mac qua tunnel.** Chỉ hợp lý khi đã chọn webhook ở 6.1.
+  - Ưu: không thêm dịch vụ.
+  - Nhược: chưa biết Zalo có tải ảnh về giữ lại lúc gửi không; nếu không, Mac tắt là ảnh hỏng.
+- **C. Chỉ gửi text, không gửi ảnh.** Phá US#52 (duyệt trên điện thoại có kèm ảnh).
+- **Đệ nghiêng A.** Đi kèm với lựa chọn long-poll ở 6.1A (không cần tunnel), và ảnh không chết
+  theo Mac.
 
 ## 7. Test
 
