@@ -354,6 +354,10 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
 - **Ràng buộc sống còn (giờ đã có hiệu lực thật):** máy Gú đang chạy Prod hằng ngày →
   **APK thử nghiệm tuyệt đối không sideload sang máy Gú.** Máy Gú chỉ nhận bản đã
   nghiệm thu đủ hai máy test.
+- **Verify mỗi beat app có thêm bộ e2e (từ 08/10):** trước khi merge, chạy `npm run e2e` trên UBS1
+  (APK cần kiểm đã cài) và ghi vào mục verify của beat trong §8.1 một dòng
+  `e2e N/N đạt · thời gian · chi phí · model · app vX.Y.Z`. Trượt → đọc `e2e/README.md` (phân loại
+  hạ tầng/hồi quy). Bộ e2e KHÔNG thay việc kiểm tay tính năng mới.
 
 ## 8. Trạng thái mốc & việc còn treo
 
@@ -464,6 +468,23 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **Bộ test e2e (07–08/10, nhánh `feat/e2e-smoke-suite`) — test khói trên máy thật, KHÔNG đụng app.**
+  Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 4.5 qua OpenRouter; key chỉ ở
+  `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 6 test: tìm kiếm ×4, đọc tiếp, chia đôi).
+  Hướng dẫn + bẫy: `e2e/README.md`.
+  - **Số (UBS1, app v1.41.0):** lần đầu chưa có cache 6/6 · 3 ph 14 s · $0,036 · lần chạy có cache
+    (Task 5) 6/6 · 1 ph 44 s · $0,0034 · lượt cuối (Task 9) 6/6 · 1 ph 45 s · $0,0036 · **sau sửa
+    review (08/10) 6/6 · 2 ph 8 s · $0,0034** (chân trang giờ chờ ổn định ~2,5 s). Test "tài liệu
+    đang mở ở tab khác" đã được chứng minh bắt được lỗi v1.41.0: APK tạm bỏ bản sửa
+    `useIonViewWillEnter` → test đỏ (bản test cũ vẫn xanh = rỗng), APK thật → xanh.
+  - **Chỉ UBS1.** dGen1 0/6: engine force-stop app mỗi test → màn đen WebView (bẫy v1.38.0 verify,
+    reboot mới hết). `openrouter/free` không chạy nổi agent (lỗi nhà cung cấp/giới hạn lượt).
+  - **Khám phá (`npm --prefix e2e run explore -- "<đề>"`, chỉ-đọc + dấu vân tay kho):** thử 08/10
+    trên v1.41.0 — kho không đổi 3/3 lượt, ~$0,4/đề, nhưng phát hiện duy nhất là báo nhầm → **cổng
+    không đạt, CHƯA vào quy trình**; giữ để dùng tay. Chi tiết: `Docs/perf/2026-10-07-spike-e2e-agent-test.md`.
+  - **Lỗi app lộ ra (backlog, chưa sửa):** thanh chia đôi là `role="separator"` → nút "Tìm"/"Đổi"
+    trên thanh không có trong cây trợ năng (trình đọc màn hình cũng không tới được); cùng một file
+    nằm ở hai môn cho hai nhãn "Xem cả" giống hệt; thẻ "Đang đọc dở" không có role/nhãn.
 - **v1.41.0 — màn Tìm gom kết quả theo tài liệu (06/10).** Đo "món xếp hạng chờ khi gặp" của
   v1.40.1 ra lỗi thật: `search()` gom tối đa 600 ứng viên (quét 2500) **theo thứ tự kho** rồi mới
   xếp → từ phổ biến chỉ ra môn đứng đầu A→Z (kho QA: "Hình sự chung" = 63% số đoạn). 17/30 câu
