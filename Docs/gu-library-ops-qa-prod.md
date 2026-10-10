@@ -3,9 +3,9 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.41.0 trên main** (verify UBS1 + dGen1) · **Prod (máy Gú) đang
-  chạy v1.40.1 — CHƯA lên v1.41.0** (lần đầu mở màn Tìm sẽ dựng lại chỉ mục ~20 s) ·
-  cập nhật 2026-10-07
+- **App** *(Mac ghi dòng này)*: **v1.41.1** (verify UBS1 + dGen1 xong 10/10) · **Prod (máy Gú) đang
+  chạy v1.40.1 — CHƯA lên 1.41.x**; nâng thẳng lên 1.41.1 (lần đầu mở màn Tìm sẽ dựng lại chỉ mục
+  ~20 s do 1.41.0) · cập nhật 2026-10-10
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -469,9 +469,41 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.41.1 — đọc tiếp không còn trôi trang (slide) · trợ năng · lỗi nhỏ của 1.41.0 (09–10/10).**
+  Spec `Docs/superpowers/specs/2026-10-09-v1.41.1-page-drift-a11y-design.md`, plan cùng tên ngày 10/10.
+  - **Lỗi chính (lộ ra từ e2e 08/10):** slide có trang thấp hơn nửa khung nhìn trôi +1 trang mỗi vòng
+    rời đi/đọc tiếp (UBS1: 3 → 4 → 5 → 6). Gốc: `PdfView` cuộn MÉP TRÊN trang p lên đầu khung nhưng
+    lấy trang ở GIỮA khung làm trang hiện tại và lưu nó. Sửa: `src/viewer/currentPage.ts` —
+    `mostVisiblePage` (trang chiếm nhiều điểm ảnh nhất, bằng nhau → trang trên; trang cao bằng nhau
+    thì trùng luật điểm giữa) + `pageHold` (cú nhảy giữ trang tới khi NGƯỜI DÙNG kéo > 8 px hoặc zoom).
+  - **Lỗi thứ hai lộ ra lúc kiểm trên máy (đã sửa trước khi phát hành):** gõ số vào "Tới trang" rồi
+    bấm "Nhảy" khi bàn phím còn mở → nhảy tới trang cuối ra "7 / 8": cú nhảy rơi vào khung thấp, bàn
+    phím đóng, trình duyệt chặn cuộn ở đáy, bản pin đầu (so `scrollTop` ±1 px) buông. Nay pin chỉ
+    buông khi người dùng kéo/zoom. *Lưu ý thiết kế có sẵn:* trang cuối = đọc xong → `recordProgress`
+    bỏ tài liệu khỏi "Đang đọc dở".
+  - **Khác:** thẻ màn Tìm hiện tên đã đổi (`displayNameMap`, theo cả `khoChanged` khi đổi tên lúc
+    tab Tìm đang mở — review bắt); nhãn thẻ có "(môn …)"; dán ≥ 256 chữ khác nhau hết ra rỗng
+    (`Uint16Array`); avgdl bỏ tài liệu 0 đơn vị (từng đảo thứ tự 2 thẻ); a11y: `DocPicker` thành nút
+    có nhãn, `separator` dời xuống tay-nắm (nút "Tìm"/"Đổi" hết bị giấu), thẻ "Đang đọc dở" là nút
+    "Đọc tiếp X, trang k / T". Không đổi chỉ mục, không đổi dữ liệu đọc dở.
+  - **Review toàn nhánh (Opus):** "with fixes" — 1 Important (tên đổi không cập nhật trong cùng
+    phiên) đã sửa; 6 Minor để lại (ledger), gồm: cuộn tay tới cuối slide chân trang dừng ở "7 / 8"
+    (có từ trước); spec §6 nói "duyệt 1–4 trang" nhưng vòng lặp chạy từ trang 1 (hiệu năng ổn).
+  - **Verify (APK release `Gu-Library-1.41.1-release.apk` sha1 `9d27bf4…`, cùng khoá CN=Gu Library):**
+    UBS1 — test slide ĐỎ với `PdfView` cũ (vòng 1 ra trang 4) / XANH bản thật; nhảy trang cuối khi
+    bàn phím mở ĐỎ bản pin đầu / XANH bản cuối; phóng to 2× (pinch qua `agent-device gesture pinch`)
+    → rời → đọc tiếp đúng trang 3/57; kéo tay nhả pin, chân trang theo trang chiếm màn hình; thẻ Tìm
+    hiện "Ôn tập thi cuối kì" (tên đổi). dGen1 (`install -r`, mở bằng launcher, không force-stop) —
+    thẻ "Đọc tiếp" bấm được, bộ chọn trông như cũ, thanh chia lộ "Tìm"/"Đổi", Đổi → bộ chọn quay lại,
+    thoát chia đôi giữ "Trang 4 / 57"; renderer sống. App 314/314 test.
+    **e2e 8/8 · 3 ph 14 s (lạnh) / 3 ph 12 s (cache) · $0 · Haiku 5.5 (không gọi model) · app v1.41.1.**
+  - **Bẫy mới:** `./gradlew assembleRelease` XOÁ SẠCH `android/app/build/outputs/apk/release/` (APK
+    1.41.0 sha1 `dbc25c5` mất — dựng lại từ tag `v1.41.0` nếu cần). `agent-device open --foreground`
+    (không `--relaunch`) lái được dGen1 mà không force-stop; trên màn vuông, phần tử nằm dưới thanh
+    tab bị chạm trúng tab (đã gặp: "Mở thư mục VBPL" → tab Thêm).
 - **Bộ test e2e (07–08/10, nhánh `feat/e2e-smoke-suite`) — test khói trên máy thật, KHÔNG đụng app.**
   Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 5.5 qua OpenRouter từ 08/10 — trước đó 4.5; key chỉ ở
-  `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 6 test: tìm kiếm ×4, đọc tiếp, chia đôi).
+  `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 8 test từ 1.41.1: tìm kiếm ×4, đọc tiếp ×3, chia đôi).
   Hướng dẫn + bẫy: `e2e/README.md`.
   - **Số (UBS1, app v1.41.0):** lần đầu chưa có cache 6/6 · 3 ph 14 s · $0,036 · lần chạy có cache
     (Task 5) 6/6 · 1 ph 44 s · $0,0034 · lượt cuối (Task 9) 6/6 · 1 ph 45 s · $0,0036 · **sau sửa
@@ -498,12 +530,12 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   - **Khám phá (`npm --prefix e2e run explore -- "<đề>"`, chỉ-đọc + dấu vân tay kho):** thử 08/10
     trên v1.41.0 — kho không đổi 3/3 lượt, ~$0,4/đề, nhưng phát hiện duy nhất là báo nhầm → **cổng
     không đạt, CHƯA vào quy trình**; giữ để dùng tay. Chi tiết: `Docs/perf/2026-10-07-spike-e2e-agent-test.md`.
-  - **Lỗi app lộ ra (backlog, chưa sửa):** thanh chia đôi là `role="separator"` → nút "Tìm"/"Đổi"
+  - **Lỗi app lộ ra — ĐÃ SỬA ở 1.41.1 (cả mục này và mục slide dưới):** thanh chia đôi là `role="separator"` → nút "Tìm"/"Đổi"
     trên thanh không có trong cây trợ năng (trình đọc màn hình cũng không tới được); cùng một file
     nằm ở hai môn cho hai nhãn "Xem cả" giống hệt; thẻ "Đang đọc dở" không có role/nhãn; dòng của
     bộ chọn tài liệu khi chia đôi (`DocPicker`) là `div onClick` không role/nhãn → agent không phân
     biệt môn / thư mục / tài liệu (bước chọn tài liệu chạy lạnh chỉ ~1/3 đạt, 08/10).
-  - **LỖI THẬT (ảnh hưởng Gú) — slide trôi trang khi đọc tiếp (lộ ra 08/10, CHƯA sửa).** Tài liệu có
+  - **LỖI THẬT (ảnh hưởng Gú) — slide trôi trang khi đọc tiếp (lộ ra 08/10, ĐÃ SỬA ở 1.41.1).** Tài liệu có
     trang thấp cỡ nửa khung nhìn (slide 4:3 trên UBS1, vd "Hình sự chung / Slide / 0. GIỚI THIỆU MÔN
     HỌC"): mỗi vòng rời đi → "Đang đọc dở" mở lại **trôi thêm một trang** (3 → 4 → 5 → 6, tái hiện
     bằng locator). Gốc: `PdfView` `goToPage(p)` đặt mép trên trang p ở đầu khung nhìn, còn
