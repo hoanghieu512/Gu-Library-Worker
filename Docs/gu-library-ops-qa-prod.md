@@ -3,8 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.41.1 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
-  đã lên v1.41.1** (11/10, cài APK như mọi lần, đi thẳng từ 1.40.1) · cập nhật 2026-10-11
+- **App** *(Mac ghi dòng này)*: **v1.42.0** (verify UBS1 + dGen1 xong 11/10) · **Prod (máy Gú) đang
+  chạy v1.41.1** — lần đầu mở 1.42.0 sẽ thấy bảng "Có gì mới" với riêng mục 1.42.0 · cập nhật 2026-10-11
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -358,6 +358,11 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   (APK cần kiểm đã cài) và ghi vào mục verify của beat trong §8.1 một dòng
   `e2e N/N đạt · thời gian · chi phí · model · app vX.Y.Z`. Trượt → đọc `e2e/README.md` (phân loại
   hạ tầng/hồi quy). Bộ e2e KHÔNG thay việc kiểm tay tính năng mới.
+- **Ghi chú cho Pé mỗi lần phát hành (từ 1.42.0):** thêm một mục vào `src/whatsNew/notes.ts` (mới
+  nhất đầu mảng) — lời thường, giọng huynh nhắn cho Pé, chỉ điều Pé thấy hoặc cảm được; đệ viết
+  nháp, huynh duyệt câu chữ. `notes.test` ĐỎ nếu phiên bản trong `package.json` chưa có mục, và chặn
+  từ kiểu code / chữ "Gú". Lần e2e đầu sau khi cài bản mới gặp bảng "Có gì mới" — `toTab` tự bấm
+  "Đã hiểu".
 
 ## 8. Trạng thái mốc & việc còn treo
 
@@ -468,6 +473,23 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.42.0 — "Có gì mới" ngay trong app (11/10).** Spec `Docs/superpowers/specs/2026-10-11-v1.42.0-whats-new-design.md`,
+  plan cùng ngày. Lần đầu mở app sau cập nhật: bảng tự hiện các bản Pé chưa xem (tối đa 3, mới nhất
+  trước); Cài đặt → "Có gì mới · Phiên bản X" xem lại 3 bản gần nhất. Ghi chú viết tay giọng huynh
+  nhắn Pé (`src/whatsNew/notes.ts`), test chốt chống quên. Preferences `whats_new_seen`.
+  - **Review toàn nhánh (Opus) + kiểm trên máy bắt 2 lỗi, đã sửa trước phát hành:** (1) bấm "Đã
+    hiểu"/"Đóng" GỠ `IonModal` đang mở → Ionic bỏ bước dismiss → `aria-hidden` treo trên
+    `ion-router-outlet`, Trang chủ biến khỏi cây trợ năng (UBS1: không thấy nút môn 10 s; lượt e2e đầu
+    sau cài đỏ) → giữ bảng mounted, đóng qua `isOpen`, ghi đã xem đúng 1 lần; (2) vùng cuộn lồng trong
+    `IonContent` phá chốt "không vuốt đóng khi đang cuộn" → để `IonContent` tự cuộn. 4 Minor để lại.
+  - **Verify:** APK release 1.42.0 sha1 `c9644dd…` (CN=Gu Library). dGen1 — cài đè 1.41.1: bảng hiện
+    đúng một mục 1.42.0 (máy chưa từng xem), nút back đóng gọn, tiến trình mới không hiện lại; Cài
+    đặt → 3 bản, cuộn được, kéo ngược chỉ cuộn không đóng (sau sửa). UBS1 — APK tạm 1.42.2 (bản sửa +
+    ghi chú tạm, không commit) cài rồi chạy e2e NGAY: bảng hiện, `toTab` bấm "Đã hiểu", nút môn thấy
+    sau 0,96 s, **8/8**; APK thật: **e2e 8/8 · 3 ph 19 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.0**.
+  - **Bẫy:** Play Store tự cập nhật Android System WebView giữa lượt e2e → hệ thống giết app
+    (`stop com.google.android.webview due to installPackageLI`) — lỗi hạ tầng, chạy lại. Muốn bảng tự
+    hiện lại trên máy test đã xem: cài APK tạm có phiên bản cao hơn + một mục ghi chú tạm.
 - **v1.41.1 — đọc tiếp không còn trôi trang (slide) · trợ năng · lỗi nhỏ của 1.41.0 (09–10/10).**
   Spec `Docs/superpowers/specs/2026-10-09-v1.41.1-page-drift-a11y-design.md`, plan cùng tên ngày 10/10.
   - **Lỗi chính (lộ ra từ e2e 08/10):** slide có trang thấp hơn nửa khung nhìn trôi +1 trang mỗi vòng
