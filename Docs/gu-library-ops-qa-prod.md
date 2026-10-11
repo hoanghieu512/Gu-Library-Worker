@@ -3,9 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.41.1** (verify UBS1 + dGen1 xong 10/10) · **Prod (máy Gú) đang
-  chạy v1.40.1 — CHƯA lên 1.41.x**; nâng thẳng lên 1.41.1 (lần đầu mở màn Tìm sẽ dựng lại chỉ mục
-  ~20 s do 1.41.0) · cập nhật 2026-10-10
+- **App** *(Mac ghi dòng này)*: **v1.41.1 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
+  đã lên v1.41.1** (11/10, cài APK như mọi lần, đi thẳng từ 1.40.1) · cập nhật 2026-10-11
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
