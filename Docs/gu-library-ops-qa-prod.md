@@ -3,8 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.42.0 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
-  đã lên v1.42.0** (huynh báo 14/10, cài APK như mọi lần) · cập nhật 2026-10-14
+- **App** *(Mac ghi dòng này)*: **v1.42.1 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
+  đang chạy v1.42.0** (chưa cài 1.42.1; lần đầu mở 1.42.1 thấy bảng với riêng mục 1.42.1) · cập nhật 2026-10-14
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -473,6 +473,31 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.42.1: slide cuộn tới cuối là đọc xong · "Có gì mới" gọn hơn (14/10).** Beat polish, không spec/plan
+  (thiết kế ngắn huynh duyệt trong phiên). (a) **Cuộn tay tới cuối slide dừng "7 / 8"**: ở đáy hai
+  slide cuối hiện trọn, luật "trang chiếm nhiều màn nhất" (1.41.1) chọn trang trên khi bằng nhau →
+  slide đọc xong không bao giờ rời "Đang đọc dở". Nay chạm đáy = trang cuối (`pageInView`, cần
+  `maxTop > 1` nên tài liệu vừa khung/dư 1 px không bị tính xong khi mở); trang vừa nhảy vẫn giữ tới
+  khi kéo. (b) Nhãn Mới/Sửa lỗi/Cải thiện cùng bề rộng (`6.4em`) → cột chữ ghi chú thẳng. (c) Cài
+  đặt → "Có gì mới" thành thẻ như các mục khác (`SettingsRow` dùng chung), version một nguồn
+  `__APP_VERSION__`. (d) e2e bấm "Đã hiểu" tới khi hết.
+  - **Review (Opus) bắt 1 Important, đã sửa:** cú kéo chỉ NHẢ trang đang giữ, không đọc lại màn
+    hình; ở đáy kéo không cuộn → không có sự kiện scroll → deck 1.42.0 để lại ở "7 / 8" mở lại nằm
+    sẵn ở đáy, vuốt mãi vẫn 7 / 8 (tái hiện trên UBS1 với APK đầu `ce04947`). Nay `release()` báo có
+    giữ hay không, kéo một ngón nhả trang giữ → `recompute` một lần. Kèm: ngưỡng `maxTop > 1`.
+  - **Verify:** tái hiện lỗi trên 1.42.0 trước khi sửa (UBS1, "0. GIỚI THIỆU MÔN HỌC": cuộn lên 5 / 8,
+    xuống đáy 7 / 8). APK release cuối 1.42.1 sha1 `fd1f95a…`. UBS1: cuộn tay tới đáy: **8 / 8**,
+    thanh tiến độ đầy, deck rời "Đang đọc dở"; tạo trạng thái kẹt (nhảy 7 → "Trang 7 / 8" ở Trang
+    chủ) → mở lại từ thẻ → vuốt một lần ở đáy: **8 / 8**, deck rời danh sách. dGen1: bảng tự hiện
+    đúng một mục 1.42.1, cột chữ thẳng; Cài đặt: thẻ "Có gì mới · Phiên bản 1.42.1" → 3 bản; cuối
+    slide **8 / 8** (cỡ chữ Lớn); trạng thái đọc xong từ UBS1 sang qua Syncthing. e2e UBS1 (APK đầu
+    `ce04947`): lượt NGAY sau cài (gặp bảng, `toTab` bấm "Đã hiểu") **8/8 · 3 ph 31 s**, lượt hai
+    **8/8 · 3 ph 20 s**; APK cuối `fd1f95a`: **e2e 8/8 · 3 ph 18 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.1**.
+  - **Bẫy kiểm tay:** `agent-device click @ref` lên nút "Nhảy" khi bàn phím đang mở KHÔNG ăn (ô vẫn
+    ghi số, trang không đổi) → chạm bằng toạ độ (`adb shell input tap`), như e2e làm. Trên dGen1
+    `click @ref` vào nút môn cũng không mở → chạm toạ độ lấy từ `snapshot --json`.
+  - **Để lại (review Minor #5, có từ trước):** tài liệu nhiều trang vừa trọn một khung không bao giờ
+    được tính đọc xong, trong khi tài liệu 1 trang thì xong ngay khi mở.
 - **v1.42.0 — "Có gì mới" ngay trong app (11/10).** Spec `Docs/superpowers/specs/2026-10-11-v1.42.0-whats-new-design.md`,
   plan cùng ngày. Lần đầu mở app sau cập nhật: bảng tự hiện các bản Pé chưa xem (tối đa 3, mới nhất
   trước); Cài đặt → "Có gì mới · Phiên bản X" xem lại 3 bản gần nhất. Ghi chú viết tay giọng huynh
