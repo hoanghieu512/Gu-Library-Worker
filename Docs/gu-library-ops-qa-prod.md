@@ -358,6 +358,9 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
   (APK cần kiểm đã cài) và ghi vào mục verify của beat trong §8.1 một dòng
   `e2e N/N đạt · thời gian · chi phí · model · app vX.Y.Z`. Trượt → đọc `e2e/README.md` (phân loại
   hạ tầng/hồi quy). Bộ e2e KHÔNG thay việc kiểm tay tính năng mới.
+- **Lint là cổng cứng (từ 14/10):** `npm run lint` phải **0 lỗi** trước khi merge (cảnh báo được
+  phép). Nợ cũ đã dọn ở beat lint sau 1.42.1; còn 10 cảnh báo có lý do ghi trong `eslint.config.js`
+  (9 chỗ `set-state-in-effect`, 1 dependency của effect cảm ứng trong `PdfView`).
 - **Ghi chú cho Pé mỗi lần phát hành (từ 1.42.0):** thêm một mục vào `src/whatsNew/notes.ts` (mới
   nhất đầu mảng) — lời thường, giọng huynh nhắn cho Pé, chỉ điều Pé thấy hoặc cảm được; đệ viết
   nháp, huynh duyệt câu chữ. `notes.test` ĐỎ nếu phiên bản trong `package.json` chưa có mục, và chặn
