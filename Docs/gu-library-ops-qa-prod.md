@@ -3,8 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.42.1 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
-  đã lên v1.42.1** (huynh báo 15/10, APK `fd1f95a`, cài như mọi lần) · cập nhật 2026-10-15
+- **App** *(Mac ghi dòng này)*: **v1.42.2 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
+  vẫn ở v1.42.1** (chưa cài 1.42.2, APK `98beac5`; lần đầu mở 1.42.2 thấy bảng với riêng mục 1.42.2) · cập nhật 2026-10-16
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -476,6 +476,29 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.42.2: tra "điều 3" ra đúng Điều 3 trước (16/10).** Sửa lỗi Gú báo (Luật Thương mại 2005),
+  không spec/plan. Chữ cuối câu tra luôn khớp tiền tố, nên "3" khớp cả 34, 312; xếp theo vị trí rồi
+  độ dài thì Điều 3 (kèm đoạn mở đầu) thua các Điều 3x chỉ có tiêu đề. Nay hai bậc: chữ cuối khớp
+  NGUYÊN từ trước, khớp tiền tố sau (`eachMatch` báo `whole`; `search` và thẻ `searchDocs` cùng thứ
+  tự, nên thẻ vẫn = dòng đầu sheet). Không đổi chỉ mục, không đổi số đoạn khớp.
+  - **Verify:** tái hiện trên sidecar thật Luật DN 2020 (kéo từ UBS1, chỉ đọc) bằng harness tạm gọi
+    `indexDoc`/`mergeShards`/`search`: "điều 3" 18 đoạn, "Điều 3. Áp dụng Luật Doanh nghiệp…" đứng
+    **#11** trước sửa, **#2** sau sửa (#1 là "Điều 3. Điều khoản chuyển tiếp" tr.128 của luật sửa
+    đổi, ngắn hơn). UBS1, APK release 1.42.2 sha1 `98beac5…`: sheet "Tìm trong tài liệu này" gõ
+    "dieu 3" → 18 đoạn, hai Điều 3 ở #1–#2, rồi đoạn dẫn chiếu "Điều 3", Điều 3x sau cùng.
+    **e2e 8/8 · 3 ph 18 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.2.** dGen1 (cùng APK, cài
+    đè 1.42.1, mở bằng `monkey`): bảng "Có gì mới" tự hiện đúng một mục 1.42.2, WebView không đen;
+    màn Tìm "dieu 3" thẻ đầu (BLHS 2015) là "Điều 3. Nguyên tắc xử lý" (1.42.1 ngay trước khi cài:
+    "Điều 35. Phạt tiền"), vẫn 2.557 đoạn / 94 tài liệu; sheet Luật DN 2020 18 đoạn, thứ tự trang
+    128 · 1 · 128 · 128 · 122 rồi mới tới Điều 3x (16–21), y như harness; bấm "Điều 3 · trang 1" →
+    "Trang 1 / 129" (vị trí đọc Luật DN 2020 trong kho QA vì thế giờ là trang 1).
+  - **Bẫy kiểm tay (UBS1):** gõ chữ "u" bằng `adb shell input text`/`keyevent` đều bị Gboard nuốt
+    (đã ghi ở `e2e/README.md`), máy không có lệnh clipboard qua adb → chạm phím "u" trên bàn phím ảo
+    bằng toạ độ. Phím ESC (`keyevent 111`) để cất bàn phím ĐÓNG luôn sheet; cất bằng cách chạm tiêu đề.
+  - **UBS1 không thấy bảng "Có gì mới":** cài 1.42.2 rồi mở lần đầu bằng `agent-device open` thì không
+    thấy bảng (mở lại bằng `monkey` cũng không, tức lần đầu đã ghi là đã xem). dGen1 mở bằng `monkey`
+    thì bảng hiện đúng → tính năng chạy; nghi lần mở qua agent-device đã đóng bảng, chưa chứng minh.
+    Kiểm tay bảng sau khi cài: mở lần đầu bằng `monkey`, không qua agent-device.
 - **v1.42.1: slide cuộn tới cuối là đọc xong · "Có gì mới" gọn hơn (14/10).** Beat polish, không spec/plan
   (thiết kế ngắn huynh duyệt trong phiên). (a) **Cuộn tay tới cuối slide dừng "7 / 8"**: ở đáy hai
   slide cuối hiện trọn, luật "trang chiếm nhiều màn nhất" (1.41.1) chọn trang trên khi bằng nhau →
