@@ -3,8 +3,8 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.42.2 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
-  đã lên v1.42.2** (huynh báo 17/10, APK `98beac5`, cài như mọi lần) · cập nhật 2026-10-17
+- **App** *(Mac ghi dòng này)*: **v1.42.3 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
+  vẫn ở v1.42.2** (chưa cài 1.42.3, APK `b909450`; lần đầu mở 1.42.3 thấy bảng với riêng mục 1.42.3) · cập nhật 2026-10-18
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -476,6 +476,32 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.42.3: kho bị Android giấu thì báo khởi động lại máy, không chia đôi folder (17-18/10).**
+  Sửa lỗ phát hiện ở Judexp (lấy plugin SAF từ app này; Judexp `feb0f94` native, `5d252cd` JS),
+  không spec/plan. dGen1 17/10 sau một lần boot lỗi: `com.android.externalstorage` không thấy
+  `/storage/emulated` nên coi cả kho là ẩn (logcat `Queried directory "primary:Download/..." is
+  hidden`), mọi folder liệt kê rỗng nhưng tạo folder vẫn được → `ensureDir` ra `_inbox (1)`. Nay
+  `ensureDir`/`createDir`/`writeFile`/`copyToDir` thấy provider trả `tên (k)` (hoặc không cho biết
+  tên) mà danh sách đọc tươi không có `tên` thì xóa bản trùng rỗng, trả `KHO_HIDDEN`; JS
+  (`src/storage/khoHidden.ts`) báo "Khởi động lại máy rồi mở lại app" ở Trang chủ, "Đi in", Nhập
+  file, "Dựng lại chỉ mục", không ghi gì, giữ chỉ mục tìm kiếm. Kèm: "Thư mục mới" = `slide` cạnh
+  `Slide` trên đĩa không phân biệt hoa thường không còn ra `slide (1)`.
+  - **Verify:** vitest 392/392, JUnit `SafNamesTest` 7/7, lint 0 lỗi, tsc. Fake SAF
+    (`src/test/fakeSaf.ts`) có cờ `hideAll` / `rejectHidden` / `caseInsensitive`. APK release 1.42.3
+    sha1 `b909450…` cài UBS1 + dGen1, mở bằng `monkey`: bảng "Có gì mới" hiện trên **cả hai** (UBS1
+    lần này có thấy). dGen1: lật trang, `_reading-<id>.json` ghi tại chỗ (JSON hợp lệ, vẫn 20 file
+    `_reading`). UBS1 (code native y hệt, build trước bump): "Thư mục mới" = `slide` cạnh `Slide` →
+    logcat `createDir req='slide' got='slide (1)'`, bản trùng bị xóa, sheet báo "Đã tồn tại", tài
+    liệu không bị chuyển. Quét kho hai máy (`find`, cả `.stversions`): không folder "(k)" nào; 24 file
+    tài liệu tên "(1)" đều từ tháng 7 và 04/10, không do bản này.
+    **e2e 8/8 · 3 ph 18 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.3.** Chưa lên Prod.
+  - **Chưa kiểm chứng:** trạng thái provider giấu kho (không tái hiện được, dGen1 khỏi sau khi khởi
+    động lại); dùng lại `_Inbox` khác hoa thường và `writeFile` gặp file khác hoa thường (kho QA không
+    có tên như vậy). Review `/code-review` 15 phát hiện, sửa 8; 7 còn mở ghi ở CHANGELOG 1.42.3.
+  - **Bẫy thiết bị:** sau khi khởi động lại, đồng hồ UBS1 có thể về **24/09/2024** (`auto_time=1`
+    nhưng chưa có mạng) → tiến độ đọc mang mốc 2024 thua bản ghi 2026, 4 test e2e chờ "Đọc tiếp
+    <tài liệu>" đỏ (4/8). Đỏ ở các test đọc thì xem `adb shell date` trước. Đĩa kho của UBS1 **không
+    phân biệt** hoa thường, của dGen1 **có phân biệt** (thử "slide"/"Slide" chỉ trên UBS1).
 - **v1.42.2: tra "điều 3" ra đúng Điều 3 trước (16/10).** Sửa lỗi Gú báo (Luật Thương mại 2005),
   không spec/plan. Chữ cuối câu tra luôn khớp tiền tố, nên "3" khớp cả 34, 312; xếp theo vị trí rồi
   độ dài thì Điều 3 (kèm đoạn mở đầu) thua các Điều 3x chỉ có tiêu đề. Nay hai bậc: chữ cuối khớp
