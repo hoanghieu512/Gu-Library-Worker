@@ -3,8 +3,9 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **v1.42.3 trên main** (tag, verify UBS1 + dGen1) · **Prod (máy Gú)
-  vẫn ở v1.42.2** (chưa cài 1.42.3, APK `b909450`; lần đầu mở 1.42.3 thấy bảng với riêng mục 1.42.3) · cập nhật 2026-10-18
+- **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.42.3** (cài 2026-10-20, APK `b909450`) ·
+  **main = v1.42.3 + merge `3dd0965`** (dọn sau review: `KHO_HIDDEN` đổi một lần ở `plugins/saf`,
+  Viewer thử lại khi lưu tiến độ lỗi; chưa bump, Gú không thấy khác) · cập nhật 2026-10-20
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -494,7 +495,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     logcat `createDir req='slide' got='slide (1)'`, bản trùng bị xóa, sheet báo "Đã tồn tại", tài
     liệu không bị chuyển. Quét kho hai máy (`find`, cả `.stversions`): không folder "(k)" nào; 24 file
     tài liệu tên "(1)" đều từ tháng 7 và 04/10, không do bản này.
-    **e2e 8/8 · 3 ph 18 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.3.** Chưa lên Prod.
+    **e2e 8/8 · 3 ph 18 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.3.** Prod từ 2026-10-20.
   - **Chưa kiểm chứng:** trạng thái provider giấu kho (không tái hiện được, dGen1 khỏi sau khi khởi
     động lại); dùng lại `_Inbox` khác hoa thường và `writeFile` gặp file khác hoa thường (kho QA không
     có tên như vậy). Review `/code-review` 15 phát hiện, sửa 8; 7 còn mở ghi ở CHANGELOG 1.42.3.
