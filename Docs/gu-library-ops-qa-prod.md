@@ -4,8 +4,8 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.42.3** (cài 2026-10-20, APK `b909450`) ·
-  **main = v1.42.4** (tag `v1.42.4`, merge `4605189`; APK nghiệm thu `b5c64d9` chờ cài máy Gú) ·
-  cập nhật 2026-10-21
+  **main = v1.43.0** (tag `v1.43.0`, merge `fc852b9`: Mục lục Điều; APK nghiệm thu 1.43.0 `d8b7b7d`
+  và 1.42.4 `b5c64d9` chưa lên máy Gú) · cập nhật 2026-10-21
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -477,6 +477,29 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.43.0: Mục lục Điều trong Viewer (21/10).** Bậc 1 của spec §8, spec
+  `Docs/superpowers/specs/2026-10-21-muc-luc-dieu-design.md`. Code ở phiên Claude cloud (nhánh
+  `feat/muc-luc-dieu`, merge `6fa7e58`), kiểm máy ở phiên local cùng ngày. Bảng Chương/Điều lấy từ
+  sidecar, đọc sau khi trang đầu vẽ xong; nút ≡ cạnh 🔍 ở footer, chữ "Mục lục" trên vạch chia cho
+  pane dưới; lọc theo số (khớp đúng trước, ô lọc ghim ở đầu sheet), đánh dấu và tự cuộn tới Điều đang
+  đọc, chạm để nhảy. Tài liệu không có Điều thì không có nút.
+  - **Verify:** vitest 470/470, lint 0 lỗi, tsc. APK release 1.43.0 sha1 `d8b7b7d…` (sao lưu ở
+    `android/app/build/acceptance-1.43.0/`) cài đè trên UBS1 + dGen1, mở bằng `monkey`: bảng "Có gì
+    mới" hiện đúng mục 1.43.0 trên **cả hai**. dGen1 với APK này: Luật DN 2020 ở tr. 60 có nút, lọc
+    "45" ra "1 Điều khớp", chạm thì tới tr. 23. Kiểm tay đủ checklist trên APK của nhánh (trước
+    bump): tên Điều, hai Điều 3 (tr. 1 và 128), lọc "3" ra 3 rồi 30 đến 39, dấu "đang đọc", split
+    (chữ chỉ hiện sau khi pane dưới vẽ, "Đổi" thì mất ngay, pane trên đứng yên), footer 720 × 720.
+    Đo trên dGen1 (quay màn): nút hiện chậm hơn trang đầu dưới 0,16 s với bộ luật (BLDS 689 Điều,
+    sidecar 0,87 MB), dưới 0,85 s với sidecar nặng nhất kho (8,65 MB); `openDoc` BLDS 1,46 s so với
+    1,55 s ở 1.42.4; cuộn ngay sau khi mở sidecar 8,65 MB giật 6,4 đến 8,8% so với 6,5 đến 11% ở
+    1.42.4 (`gfxinfo`); cuộn sheet 689 hàng 0,95% giật. Kho QA (182 sidecar, chạy đúng `buildToc`):
+    72 tài liệu có `dieu`, 4.646 Điều, 0 ca "Điều 8Tên" hay "Điều 5 - Tên". Cả hai máy vẫn 20 file
+    `_reading`, không bản "(1)".
+    **e2e 8/8 · 3 ph 17 s · $0 · Haiku 5.5 (không gọi model) · app v1.43.0.** Huynh duyệt câu chữ
+    trên màn và ghi chú cho Pé 21/10.
+  - **Để lại:** 8 tài liệu hội thảo (`Hình sự chung/Tài liệu tham khảo`) có Điều do worker bắt từ
+    đoạn trích, nên vẫn có nút với vài Điều rời; trên màn 360 dp (UBS1) chữ gợi ý "Tới trang…" bị
+    cắt khi có nút ≡ và tổng trang 3 chữ số; bốn Minor của review ghi ở CHANGELOG 1.43.0.
 - **v1.42.4: dọn nốt review của bản kho bị giấu (20-21/10).** Không spec/plan, chi tiết ở
   CHANGELOG 1.42.4. Nhập lô dừng vì kho bị giấu thì báo số file đã vào và tên file cần gửi lại; lưu
   tiến độ chỉ coi là đã lưu khi lưu xong, lỗi thì chờ 2 s rồi thử lại; `createDir` không xoá được
