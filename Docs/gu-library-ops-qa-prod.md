@@ -4,8 +4,8 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.42.3** (cài 2026-10-20, APK `b909450`) ·
-  **main = v1.42.3 + merge `3dd0965`** (dọn sau review: `KHO_HIDDEN` đổi một lần ở `plugins/saf`,
-  Viewer thử lại khi lưu tiến độ lỗi; chưa bump, Gú không thấy khác) · cập nhật 2026-10-20
+  **main = v1.42.4** (tag `v1.42.4`, merge `4605189`; APK nghiệm thu `b5c64d9` chờ cài máy Gú) ·
+  cập nhật 2026-10-21
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -477,6 +477,24 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.42.4: dọn nốt review của bản kho bị giấu (20-21/10).** Không spec/plan, chi tiết ở
+  CHANGELOG 1.42.4. Nhập lô dừng vì kho bị giấu thì báo số file đã vào và tên file cần gửi lại; lưu
+  tiến độ chỉ coi là đã lưu khi lưu xong, lỗi thì chờ 2 s rồi thử lại; `createDir` không xoá được
+  bản trùng thì nói tên folder còn sót; "Dựng lại chỉ mục" kiểm kho bằng một lần liệt kê gốc;
+  `KHO_HIDDEN` đổi một lần ở `src/plugins/saf.ts`; lỗi lưu tiến độ ra logcat bản release qua
+  `SafPlugin.logWarn` (tag `GuApp`, không bật `loggingBehavior`).
+  - **Verify:** vitest 423/423, lint 0 lỗi, tsc trên nhánh `release/1.42.4`; JUnit 10/10 (9
+    `SafNamesTest`) ở `945f93b`, nhánh release không đổi native. APK release 1.42.4 sha1 `b5c64d9…`
+    (sao lưu ở `android/app/build/acceptance-1.42.4/`) cài đè 1.42.3 trên UBS1 + dGen1, mở bằng
+    `monkey`: bảng "Có gì mới" hiện đúng mục 1.42.4 trên **cả hai**. dGen1: "Đọc tiếp" rồi cuộn,
+    `_reading-<id>.json` ghi trang 25 tại chỗ (JSON hợp lệ); cả hai máy vẫn 20 file `_reading`, không
+    bản "(1)". Bản dò cho `recordProgress` luôn ném lỗi (20/10, nhánh `fix/review-leftovers`): UBS1 ra
+    `W/GuApp recordProgress failed`, cuộn 8 s thì 4 lần thử cách nhau khoảng 2,2 s.
+    **e2e 8/8 · 3 ph 21 s · $0 · Haiku 5.5 (không gọi model) · app v1.42.4.** Huynh duyệt ghi chú
+    cho Pé 21/10.
+  - **Chưa kiểm chứng:** nhập lô dừng giữa chừng (phải nhập file thật vào kho QA), nhánh `createDir`
+    không xoá được bản trùng, trạng thái provider giấu kho. dGen1 mở Viewer ở cỡ chữ rộng hơn khung
+    (cắt phải), thấy từ 20/10 với cả bản `main`, chưa rõ vì sao.
 - **v1.42.3: kho bị Android giấu thì báo khởi động lại máy, không chia đôi folder (17-18/10).**
   Sửa lỗ phát hiện ở Judexp (lấy plugin SAF từ app này; Judexp `feb0f94` native, `5d252cd` JS),
   không spec/plan. dGen1 17/10 sau một lần boot lỗi: `com.android.externalstorage` không thấy
