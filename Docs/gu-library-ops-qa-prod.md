@@ -3,9 +3,9 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.42.3** (cài 2026-10-20, APK `b909450`) ·
-  **main = v1.43.0** (tag `v1.43.0`, merge `fc852b9`: Mục lục Điều; APK nghiệm thu 1.43.0 `d8b7b7d`
-  và 1.42.4 `b5c64d9` chưa lên máy Gú) · cập nhật 2026-10-21
+- **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.43.0** (cài 2026-10-21, APK `d8b7b7d`; đi
+  thẳng từ 1.42.3, 1.42.4 không lên máy Gú) · **main = v1.43.0** (tag `v1.43.0`) + nhả chỉ mục Tìm
+  khỏi RAM (merge `185eefb`, đã kiểm UBS1 + dGen1, chờ phát hành 1.43.1) · cập nhật 2026-10-22
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -496,7 +496,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     72 tài liệu có `dieu`, 4.646 Điều, 0 ca "Điều 8Tên" hay "Điều 5 - Tên". Cả hai máy vẫn 20 file
     `_reading`, không bản "(1)".
     **e2e 8/8 · 3 ph 17 s · $0 · Haiku 5.5 (không gọi model) · app v1.43.0.** Huynh duyệt câu chữ
-    trên màn và ghi chú cho Pé 21/10.
+    trên màn và ghi chú cho Pé 21/10. Prod từ 2026-10-21 (đi thẳng từ 1.42.3).
   - **Để lại:** 8 tài liệu hội thảo (`Hình sự chung/Tài liệu tham khảo`) có Điều do worker bắt từ
     đoạn trích, nên vẫn có nút với vài Điều rời; trên màn 360 dp (UBS1) chữ gợi ý "Tới trang…" bị
     cắt khi có nút ≡ và tổng trang 3 chữ số; bốn Minor của review ghi ở CHANGELOG 1.43.0.
