@@ -3,9 +3,9 @@
 ***Bản hợp nhất** — nguồn chân lý duy nhất, phải khớp về cả repo app, repo worker lẫn
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
-- **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.43.0** (cài 2026-10-21, APK `d8b7b7d`; đi
-  thẳng từ 1.42.3, 1.42.4 không lên máy Gú) · **main = v1.43.0** (tag `v1.43.0`) + nhả chỉ mục Tìm
-  khỏi RAM (merge `185eefb`, đã kiểm UBS1 + dGen1, chờ phát hành 1.43.1) · cập nhật 2026-10-22
+- **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.43.0** (cài 2026-10-21, APK `d8b7b7d`) ·
+  **main = v1.43.1** (tag `v1.43.1`, merge `0676bbb`: màn Tìm nhả chỉ mục khỏi RAM; APK nghiệm thu
+  1.43.1 `7502667` chưa lên máy Gú) · cập nhật 2026-10-24
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -477,6 +477,28 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.43.1: màn Tìm nhả chỉ mục khỏi RAM (21-24/10).** Spec
+  `Docs/superpowers/specs/2026-10-21-nha-chi-muc-ram-design.md`. Code ở phiên Claude cloud (nhánh
+  `fix/search-index-ram`, merge `185eefb`), kiểm máy ở phiên local 21-22/10. Rời màn Tìm quá 3 phút
+  (mở kết quả sang Viewer cũng tính) thì nhả chỉ mục toàn kho, app vào nền thì nhả ngay; quay lại thì
+  nạp lại dưới danh sách kết quả cũ, kèm dòng "đang cập nhật chỉ mục…". "Dựng lại chỉ mục" nay luôn
+  làm lần vào Tìm kế tiếp dựng lại. Câu gợi ý khi không ra kết quả đổi em dash thành dấu hai chấm.
+  - **Verify:** vitest 502/502, lint 0 lỗi, tsc. Bản nhánh (APK `4509809`, trước bump) đo PSS so với
+    1.43.0 trên UBS1 + dGen1 (tiến trình chính + renderer đúng UID): ở nền sau Viewer 60 s 296 → 208
+    MB (UBS1), 362 → 269 MB (dGen1); lần đầu vào Tìm rồi chuyển app, 4 phút ở nền 260 → 166 MB (UBS1,
+    bản cũ còn 122 MB nằm ở zram). Tiền cảnh không có áp lực thì chưa giảm (V8 chưa thu gom), ép
+    `RUNNING_CRITICAL` thì 299 → 210 MB. Ionic bắn leave/enter thật (quay màn), `pause` nhả, "Dựng
+    lại" hai lần đều từ 0, câu gợi ý đúng trên cả hai máy. Quay lại Tìm sau khi đã nhả: WebView bận
+    khoảng 1 s, "đang cập nhật" tắt sau 3,3 s (UBS1) và 4,4 s (dGen1). APK release 1.43.1 sha1
+    `7502667…` (sao lưu ở `android/app/build/acceptance-1.43.1/`) cài đè trên UBS1 + dGen1, mở bằng
+    `monkey`: bảng "Có gì mới" hiện đúng mục 1.43.1 trên **cả hai**.
+    **e2e 10/10 · 4 ph 9 s · $0 · Haiku 5.5 (không gọi model) · app v1.43.1.** Huynh duyệt ghi chú
+    cho Pé 24/10.
+  - **Để lại:** hai Minor của review (test trang "quay lại trong 3 phút" trả đồng hồ thật trước
+    `enter`; chưa có test trang khoá việc giữ danh sách cũ trong 130 ms chờ gõ); toast "Đã xoá chỉ
+    mục" ở Cài đặt còn em dash. Kho QA thêm môn "Hình sự" (23/10, xếp đầu) đẩy hàng "Luật Công Chứng"
+    của bộ chọn xuống dưới thanh tab trên UBS1, lượt e2e đầu 9/10; test Mục lục chia đôi nay kéo từng
+    hàng lên khỏi thanh tab trước khi chạm (`0b3bbd1`).
 - **v1.43.0: Mục lục Điều trong Viewer (21/10).** Bậc 1 của spec §8, spec
   `Docs/superpowers/specs/2026-10-21-muc-luc-dieu-design.md`. Code ở phiên Claude cloud (nhánh
   `feat/muc-luc-dieu`, merge `6fa7e58`), kiểm máy ở phiên local cùng ngày. Bảng Chương/Điều lấy từ
@@ -641,10 +663,11 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     1.41.0 sha1 `dbc25c5` mất — dựng lại từ tag `v1.41.0` nếu cần). `agent-device open --foreground`
     (không `--relaunch`) lái được dGen1 mà không force-stop; trên màn vuông, phần tử nằm dưới thanh
     tab bị chạm trúng tab (đã gặp: "Mở thư mục VBPL" → tab Thêm).
-- **Bộ test e2e (07–08/10, nhánh `feat/e2e-smoke-suite`) — test khói trên máy thật, KHÔNG đụng app.**
-  Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 5.5 qua OpenRouter từ 08/10 — trước đó 4.5; key chỉ ở
-  `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 8 test từ 1.41.1: tìm kiếm ×4, đọc tiếp ×3, chia đôi).
-  Hướng dẫn + bẫy: `e2e/README.md`.
+- **Bộ test e2e (07–08/10, nhánh `feat/e2e-smoke-suite`): test khói trên máy thật, KHÔNG đụng app.**
+  Thư mục `e2e/` riêng (tester-army/e2e 0.18.0 + agent-device, Haiku 5.5 qua OpenRouter từ 08/10,
+  trước đó 4.5; key chỉ ở `~/.bash_profile`). Lệnh: `npm run e2e` (preflight → 10 test từ 1.43.0:
+  tìm kiếm ×4, đọc tiếp ×3, chia đôi, Mục lục Điều ×2; 8 test từ 1.41.1 tới 1.42.4). Hướng dẫn + bẫy:
+  `e2e/README.md`.
   - **Số (UBS1, app v1.41.0):** lần đầu chưa có cache 6/6 · 3 ph 14 s · $0,036 · lần chạy có cache
     (Task 5) 6/6 · 1 ph 44 s · $0,0034 · lượt cuối (Task 9) 6/6 · 1 ph 45 s · $0,0036 · **sau sửa
     review (08/10) 6/6 · 2 ph 8 s · $0,0034** (chân trang giờ chờ ổn định ~2,5 s). Test "tài liệu
