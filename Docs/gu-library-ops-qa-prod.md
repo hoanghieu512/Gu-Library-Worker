@@ -4,8 +4,9 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.43.0** (cài 2026-10-21, APK `d8b7b7d`) ·
-  **main = v1.44.0** (tag `v1.44.0`, merge `14b1337`: mở app bằng video panda mở cửa thư viện; APK
-  nghiệm thu 1.44.0 `b04e43e` chưa lên máy Gú; 1.43.1 `7502667` cũng chưa) · cập nhật 2026-10-25
+  **main = v1.44.1** (tag `v1.44.1`, merge `8d9d106`: clip mở app làm lại bằng Grok Imagine; APK
+  nghiệm thu 1.44.1 `75cb7e6` chưa lên máy Gú; 1.44.0 `b04e43e` và 1.43.1 `7502667` cũng chưa) ·
+  cập nhật 2026-10-25
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -477,6 +478,39 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.44.1: clip mở app làm lại bằng Grok Imagine (25/10).** Nhánh `release/1.44.1`. Cùng câu
+  chuyện với 1.44.0 (panda đi tới, đẩy hai cánh cửa thư viện, bước vào, quay lại vẫy), tóc giả gọn
+  hơn, hình nét hơn, cửa xoay vào trong trên bản lề. Code chạy clip không đổi; đổi clip, hai ảnh
+  tĩnh (giờ 720 × 1280) và nhịp cắt trong `scripts/make-opening-video.sh` (1,7 · 1,35 · 1,45 lần,
+  ra 4,17 s).
+  - **Verify:** vitest 520/520, JUnit 31/31, lint 0 lỗi, tsc. Đo song song với 1.44.0 trên UBS1
+    cùng buổi, cùng script (chạm icon ở launcher, 3 lượt mỗi bản; 1.44.0 cài lại bằng
+    `adb install -r -d`): Trang chủ đứng yên trung vị 4,55 s so với 4,58 s; PSS app giây 13 trung
+    vị 105,0 MB cả hai bản; trong clip không có lúc nào quá 0,2 s không có khung mới. APK release
+    1.44.1 sha1 `75cb7e6…` (6 689 129 B, sao lưu ở `android/app/build/acceptance-1.44.1/`) cài đè
+    trên UBS1 + dGen1, mở bằng `monkey`: clip chạy rồi bảng "Có gì mới" hiện đúng mục 1.44.1 trên
+    **cả hai**; dGen1 cắt vuông vẫn thấy cửa mở và panda vẫy.
+    **e2e 10/10 · 5 ph 1 s · $0 · Haiku 5.5 (không gọi model) · app v1.44.1.** Số đo ở
+    `Docs/perf/2026-10-24-opening-doors.md`, mục "Clip Grok (1.44.1)".
+  - **Nguồn clip:** Grok Imagine trong Grok chat (gói X Premium 30 USD/tháng của huynh; API xAI
+    tính tiền riêng nên không dùng). Ảnh bắt đầu: khung giây 1,05 của clip Higgsfield 1.44.0, cắt về
+    720 × 1280. Ra 720 × 1280, 24 hình/giây, 6,04 s, có tiếng (bỏ khi cắt), không thấy watermark.
+    Lượt 1 (prompt ngắn): 2 clip đều mở cửa sai, cánh trượt ngang như cửa lùa rồi teo thành mảnh
+    gỗ. Lượt 2, prompt tả bản lề, 3 trên 3 clip đúng; huynh chọn clip 3. Prompt lượt 2 (nguyên văn):
+    "Animate this image as a vertical 9:16 video, about 6 seconds. Start exactly from this image.
+    Locked-off static camera outside the doorway: no zoom, no pan, no cuts, the camera never moves
+    through the door. Keep the panda exactly as in the reference: glossy 3D toy panda, white curled
+    judge's wig with a black band, pink cheeks, holding a small brown book. The panda puts both paws
+    on the doors and pushes. The two doors are solid rigid wooden leaves hinged on their outer
+    edges: the left leaf swings inward to the left and the right leaf swings inward to the right,
+    away from the camera, so a gap opens in the middle and widens. The doors never slide sideways,
+    fold, bend, split, shrink or move toward the camera. When open, both leaves rest against the
+    inside walls and the door frame stays visible at the edges. Warm golden light from a cozy
+    library with tall bookshelves, a long reading table and a tall arched window. The panda walks
+    two steps through the middle gap, just past the threshold, turns around to face the camera,
+    smiles and waves with one paw while holding the book, then stands still for the last second.
+    No text, no extra characters." Clip gốc KHÔNG commit.
+  - **Để lại:** như 1.44.0 (chưa kiểm "Xoá hiệu ứng động" trên máy, các Minor của review video).
 - **v1.44.0: mở app bằng video panda mở cửa thư viện (24-25/10).** Spec
   `Docs/superpowers/specs/2026-10-25-mo-cua-video-design.md` (thay phần lớp cửa của
   `2026-10-24-mo-cua-tu-sach-design.md`), nhánh `feat/opening-doors` rồi `release/1.44.0`. Mỗi lần
