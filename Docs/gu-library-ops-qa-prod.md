@@ -204,9 +204,11 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
    (`time.windows.com`) và nó hỏng trên Atomman → đồng hồ trôi → rclone sync chết (§6).
    Chạy lệnh `w32tm /config /manualpeerlist:...` ở §6 rồi kiểm bằng `/stripchart`.
 5. **App (dựng + cài APK release, làm trên máy Mac):** bump version = sửa **1 chỗ**
-   `versionName` trong `package.json` (`versionCode` tĩnh =2 ở build.gradle — không tăng,
+   `versionName` trong `package.json` (`versionCode` tĩnh =2 ở build.gradle, không tăng vì
    sideload không cần). Dựng: `cd android && ./gradlew assembleRelease` →
-   `app/build/outputs/apk/release/Gu-Library-<ver>-release.apk`. Keystore ngoài repo
+   `app/build/outputs/apk/release/Gu-Library-<ver>-release.apk`; Gradle ghi đè chỗ này mỗi lần
+   build, nên bản đã nghiệm thu chép ngay sang `releases/` ở gốc repo app (gitignored, chỗ cất APK
+   duy nhất, trạng thái từng bản ở `releases/README.txt`). Keystore ngoài repo
    `~/keystores/gu-library/gu-library-release.jks`, credential `android/keystore.properties`
    (gitignored). Cài lên máy: release-đè-release **cùng keystore** không mất data;
    release-**đè-debug phải gỡ trước** (khác chữ ký → `install -r` báo lỗi). Rồi Cài đặt →
@@ -487,7 +489,7 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     cùng buổi, cùng script (chạm icon ở launcher, 3 lượt mỗi bản; 1.44.0 cài lại bằng
     `adb install -r -d`): Trang chủ đứng yên trung vị 4,55 s so với 4,58 s; PSS app giây 13 trung
     vị 105,0 MB cả hai bản; trong clip không có lúc nào quá 0,2 s không có khung mới. APK release
-    1.44.1 sha1 `75cb7e6…` (6 689 129 B, sao lưu ở `android/app/build/acceptance-1.44.1/`) cài đè
+    1.44.1 sha1 `75cb7e6…` (6 689 129 B, cất ở `releases/`) cài đè
     trên UBS1 + dGen1, mở bằng `monkey`: clip chạy rồi bảng "Có gì mới" hiện đúng mục 1.44.1 trên
     **cả hai**; dGen1 cắt vuông vẫn thấy cửa mở và panda vẫy.
     **e2e 10/10 · 5 ph 1 s · $0 · Haiku 5.5 (không gọi model) · app v1.44.1.** Số đo ở
