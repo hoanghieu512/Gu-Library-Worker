@@ -4,8 +4,8 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.43.0** (cài 2026-10-21, APK `d8b7b7d`) ·
-  **main = v1.43.1** (tag `v1.43.1`, merge `0676bbb`: màn Tìm nhả chỉ mục khỏi RAM; APK nghiệm thu
-  1.43.1 `7502667` chưa lên máy Gú) · cập nhật 2026-10-24
+  **main = v1.44.0** (tag `v1.44.0`, merge `14b1337`: mở app bằng video panda mở cửa thư viện; APK
+  nghiệm thu 1.44.0 `b04e43e` chưa lên máy Gú; 1.43.1 `7502667` cũng chưa) · cập nhật 2026-10-25
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -477,6 +477,42 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.44.0: mở app bằng video panda mở cửa thư viện (24-25/10).** Spec
+  `Docs/superpowers/specs/2026-10-25-mo-cua-video-design.md` (thay phần lớp cửa của
+  `2026-10-24-mo-cua-tu-sach-design.md`), nhánh `feat/opening-doors` rồi `release/1.44.0`. Mỗi lần
+  mở lạnh, clip 4,2 s (panda thẩm phán ôm sách đi tới, đẩy cửa thư viện, bước vào, quay lại vẫy)
+  phát bằng lớp Android (`SurfaceView` + `MediaPlayer`) nằm trên WebView; chạm hoặc back để bỏ qua;
+  công tắc "Hiệu ứng mở cửa" trong Cài đặt; không chạy khi quay lại từ nền, mở qua share, sau sự
+  cố, khi máy xoá hiệu ứng động. Splash, nền cửa sổ, nền WebView và `index.html` cùng màu kem: hết
+  khung trắng lúc mở app. Đã thử và bỏ trên cùng nhánh: cửa tủ vẽ bằng CSS (panda đứng chào rời
+  rạc; WebView đứng 1,2 đến 1,9 s ngay sau khi Trang chủ vẽ lần đầu và chặn cả luồng giao diện của
+  app, nên cửa phải chờ, Trang chủ chậm 1,9 s; bản video đầu dùng `TextureView` cũng đứng 1,3 s).
+  - **Verify:** vitest 520/520, JUnit 31/31 (`OpeningGate` 7, `OpeningFlow` 14), lint 0 lỗi, tsc.
+    Đo trên UBS1 (chạm icon ở launcher, 3 lượt, so với 1.43.1): Trang chủ hiện ở trung vị 5,14 s so
+    với 4,45 s (+0,69 s, huynh chấp nhận, giữ nhịp 4,2 s và lần mờ 300 ms); clip không đứng hình;
+    PSS app giây 13: 98,5 MB so với 99,4 MB (trước khi thả hai ảnh tĩnh là 106,4 MB). Kiểm tay trên
+    UBS1: chạm và back bỏ qua, bấm Home giữa clip rồi mở lại không phát lại, share lúc app tắt và
+    share giữa clip đều ra bảng chọn đích, tắt công tắc thì không có clip. dGen1: clip cắt vuông vẫn
+    đủ đoạn, splash có huy hiệu panda. APK release 1.44.0 sha1 `b04e43e…` (6 640 717 B, sao lưu ở
+    `android/app/build/acceptance-1.44.0/`) cài đè trên UBS1 + dGen1, mở bằng `monkey`: clip chạy rồi
+    bảng "Có gì mới" hiện đúng mục 1.44.0 trên **cả hai**.
+    **e2e 10/10 · 4 ph 58 s · $0 · Haiku 5.5 (không gọi model) · app v1.44.0.** Số đo đầy đủ ở
+    `Docs/perf/2026-10-24-opening-doors.md`.
+  - **Nguồn clip:** Higgsfield **Genjutsu** (lượt free, style mặc định, 720p), chuyển động lấy từ
+    một clip tham chiếu dọc do huynh tự quay (không công bố), ra 696 × 1320, 24 hình/giây, 5,96 s,
+    Gú duyệt 25/10. Ảnh tham chiếu: panda P1 (tách nền) và cặp cửa C4, sinh bằng OpenRouter
+    `google/gemini-nano-banana-2.1` (prompt ở `scripts/opening-art/`, script
+    `scripts/gen-opening-art.mjs`, ban đầu làm cho bản cửa CSS); ảnh thư viện sinh bằng
+    `google/gemini-3.1-flash-image` (nano-banana lúc đó bị giới hạn lượt). Tổng chi OpenRouter cả
+    beat 1,13 USD. Prompt Genjutsu: panda từ @image1, cửa @image2, thư viện @image3; đi vào từ trái,
+    cúi chào, đẩy hai cánh cửa, máy đi theo vào thư viện, quay lại vẫy; không chữ. Cắt và nén bằng
+    `scripts/make-opening-video.sh` (ffmpeg, cwebp); clip gốc KHÔNG commit. Lượt Genjutsu đầu
+    (clip tham chiếu ngang) ra khổ ngang: Genjutsu cho ra khổ theo clip tham chiếu.
+  - **Để lại:** chưa kiểm "Xoá hiệu ứng động" trên máy (cần đổi thang hiệu ứng hệ thống); Minor
+    của review: xoay máy giữa clip, hai ảnh tĩnh giải mã trên luồng chính, lỗi đồng bộ trong
+    `prepare()`, script video để sót file tạm, TalkBack vẫn với tới Trang chủ dưới lớp video, vài
+    ca còn thiếu trong `OpeningFlowTest`. Trang chủ tự đứng hình 1,2 đến 1,9 s sau lần vẽ đầu: việc
+    của chính Trang chủ, chưa tìm ra phần nặng.
 - **v1.43.1: màn Tìm nhả chỉ mục khỏi RAM (21-24/10).** Spec
   `Docs/superpowers/specs/2026-10-21-nha-chi-muc-ram-design.md`. Code ở phiên Claude cloud (nhánh
   `fix/search-index-ram`, merge `185eefb`), kiểm máy ở phiên local 21-22/10. Rời màn Tìm quá 3 phút
