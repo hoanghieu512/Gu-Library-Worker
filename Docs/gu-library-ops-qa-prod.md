@@ -4,8 +4,9 @@
 Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) — không phải tài liệu cho Gú.*
 
 - **App** *(Mac ghi dòng này)*: **Prod (máy Gú) = v1.44.1** (cài 2026-10-26, lên thẳng từ 1.43.0,
-  APK `75cb7e6`) · **main = v1.44.1** (tag `v1.44.1`, merge `8d9d106`: clip mở app làm lại bằng
-  Grok Imagine) · cập nhật 2026-10-26
+  APK `75cb7e6`) · **main = v1.45.0** (tag `v1.45.0`, merge `0022ded`: clip mở app theo dịp lễ, bắt
+  đầu với Halloween 24 đến 31/10; APK nghiệm thu `bad976c` ở `releases/`, chưa lên máy Gú) · cập
+  nhật 2026-10-26
 
 - **Worker** *(Atomman ghi dòng này)*: v0.20.2 (OCR trang ảnh: QA + Prod đã bật, tồn đã xong) · cập nhật 2026-10-08
 
@@ -479,6 +480,51 @@ Obsidian. File này dành cho huynh (và cả hai CC khi cần dựng lại) —
     trong RAM vật lý; (4) máy `status normal`, free 3.98 GB → không có áp lực buộc trả thêm.
     → Con số "giữ lại" là **PSS kế toán**, RAM vật lý thực bị chiếm nhỏ hơn nhiều. *Phép thử tuyệt
     đối (chưa cần chạy):* ép áp lực bộ nhớ thật rồi đo lại — chỉ làm nếu sau này thấy máy Gú ì.
+- **v1.45.0: clip mở app theo dịp lễ, bắt đầu với Halloween (26/10).** Nhánh `feat/holiday-clips`
+  rồi `release/1.45.0`. `OpeningClip` (Java thuần) chọn clip theo ngày trên máy: từ 24 tới hết 31/10
+  phát clip Halloween, ngày khác phát clip mặc định; hết lễ tự về clip mặc định, không cần bản cập
+  nhật. Không có tuỳ chọn trong Cài đặt (giữ bất ngờ); công tắc "Hiệu ứng mở cửa" vẫn tắt mọi clip.
+  Đã bác: ra một bản cho mỗi dịp, tuỳ chọn trong Cài đặt.
+  - **Verify:** vitest 520/520, JUnit 35/35 (`OpeningClip` 4 mới), lint 0 lỗi, tsc. Hai máy test để
+    ngày 26/10. APK release 1.45.0 sha1 `bad976c…` (8 544 739 B, hơn 1.44.1 khoảng 1,86 MB, cất ở
+    `releases/`) cài đè trên UBS1 + dGen1, mở bằng `monkey`: clip Halloween chạy rồi bảng "Có gì
+    mới" hiện đúng mục 1.45.0 trên **cả hai**; dGen1 không đứng hình (khoảng lâu nhất không có khung
+    mới 0,05 s). Đo song song với 1.44.1 trên UBS1 (chạm icon ở launcher): Trang chủ đứng yên trung
+    vị 4,58 s (4 lượt, lượt đầu 5,49 s vì máy vừa thức nên lớp video giữ khung cuối lâu hơn) so với
+    4,56 s; trong clip không có lúc nào quá 0,2 s không có khung mới; PSS app giây 13 trung vị 102,2
+    MB so với 104,1 MB.
+    **e2e 10/10 · 4 ph 59 s · $0 · Haiku 5.5 (không gọi model) · app v1.45.0.** Số đo ở
+    `Docs/perf/2026-10-24-opening-doors.md`, mục "Clip Halloween (1.45.0)".
+  - **Nguồn clip Halloween:** Grok Imagine trong Grok chat (gói X Premium của huynh), hai bước,
+    huynh duyệt clip 26/10. Bước 1 (sửa ảnh, tải lên khung đầu clip 1.44.1, 720 × 1280), prompt
+    nguyên văn: "Edit this image and keep everything else exactly the same: the panda's pose,
+    position, size and face, the wooden double doors, the floor, the lighting and the framing. Dress
+    the panda for Halloween: a tall purple witch hat with an orange band, worn on top of its white
+    curled judge's wig so the wig curls still show under the hat; a purple cape with small gold
+    stars over its shoulders; a short wooden magic wand with a tiny glowing star tip held in its
+    raised paw, pointing at the door; the brown book under its other arm becomes a spellbook with a
+    small gold star on the cover. Cute and friendly, not scary. Same glossy 3D toy style. Vertical
+    9:16, 720 x 1280." Bước 2 (video từ ảnh chọn ở bước 1), prompt nguyên văn: "Animate this image
+    as a vertical 9:16 video, about 6 seconds. Start exactly from this image. Locked-off static
+    camera outside the doorway: no zoom, no pan, no cuts, the camera never moves through the door.
+    Keep the panda exactly as in the image: glossy 3D toy panda, purple witch hat with an orange
+    band over its white curled judge's wig, purple cape with gold stars, magic wand in one paw,
+    spellbook under the other arm, pink cheeks. The panda taps the doors once with the wand and
+    golden sparkles burst from the wand tip. The two doors are solid rigid wooden leaves hinged on
+    their outer edges: by magic, the left leaf swings inward to the left and the right leaf swings
+    inward to the right, away from the camera, so a gap opens in the middle and widens. The doors
+    never slide sideways, fold, bend, split, shrink or move toward the camera. When open, both
+    leaves rest against the inside walls and the door frame stays visible at the edges. Inside is a
+    cozy library decorated for Halloween, cute and not scary: tall bookshelves, a long reading table
+    with glowing smiling jack-o'-lanterns, floating candles, a few small friendly bats near the
+    ceiling, warm orange and purple light, a tall arched window. The panda walks two steps through
+    the middle gap, just past the threshold, turns around to face the camera, smiles and waves the
+    wand, leaving a small trail of sparkles, then stands still for the last second. No text, no
+    extra characters." Ra 720 × 1280, 24 hình/giây, 6,04 s, có tiếng (bỏ khi cắt). Bìa sách có chữ
+    dù prompt dặn không chữ. Cắt bằng `scripts/make-opening-video.sh <nguồn> halloween` (1,6 · 1,3 ·
+    1,6 lần, 4,20 s, 1,65 MB). Clip gốc KHÔNG commit.
+  - **Để lại:** Noel và Tết chưa làm (Tết ghi ngày dương lịch từng năm); mỗi clip lễ thêm khoảng 1,9
+    MB vào APK. Các mục để lại của 1.44.0 vẫn còn.
 - **v1.44.1: clip mở app làm lại bằng Grok Imagine (25/10).** Nhánh `release/1.44.1`. Cùng câu
   chuyện với 1.44.0 (panda đi tới, đẩy hai cánh cửa thư viện, bước vào, quay lại vẫy), tóc giả gọn
   hơn, hình nét hơn, cửa xoay vào trong trên bản lề. Code chạy clip không đổi; đổi clip, hai ảnh
